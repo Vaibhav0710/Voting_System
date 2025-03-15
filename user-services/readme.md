@@ -34,7 +34,7 @@ user-service/
 ## 🚀 How to Run
 1. **Clone the Repository**
    ```sh
-   git clone <your-repo-url>
+   git clone https://github.com/Vaibhav0710/Voting_System
    cd user-service
    ```
 
