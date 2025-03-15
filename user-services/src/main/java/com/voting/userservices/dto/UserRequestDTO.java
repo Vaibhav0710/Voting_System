@@ -8,11 +8,9 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class AuthResponseDTO {
-    private Long id;
+public class UserRequestDTO {
     private String name;
     private String email;
+    private String password;
     private Role role;
-    private String message;
 }
-

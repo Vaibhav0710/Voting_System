@@ -1,8 +1,10 @@
 # 🗳️ Voting System - User Service
 
-This is the **User Service** for the Voting System built with **Spring Boot**, **MySQL**, and follows **SOLID principles**.
+This is the **User Service** for the Voting System built with **Spring Boot**, **MySQL**, and follows **SOLID principles
+**.
 
 ## 📌 Features
+
 - User Registration with role-based data.
 - User Login with validation.
 - Uses DTOs for data transfer and separation of concerns.
@@ -10,12 +12,14 @@ This is the **User Service** for the Voting System built with **Spring Boot**, *
 - Service layer for business logic.
 
 ## 🏗️ Tech Stack
+
 - **Spring Boot** (Backend Framework)
 - **MySQL** (Database)
 - **Lombok** (For boilerplate reduction)
 - **Jakarta Validation** (For input validation)
 
 ## 📂 Folder Structure
+
 ```
 user-service/
 │── src/
@@ -32,6 +36,7 @@ user-service/
 ```
 
 ## 🚀 How to Run
+
 1. **Clone the Repository**
    ```sh
    git clone https://github.com/Vaibhav0710/Voting_System
