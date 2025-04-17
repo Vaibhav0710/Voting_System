@@ -10,7 +10,6 @@ import org.springframework.beans.BeanUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class UserServicesImpl implements UserServices {
 
@@ -48,10 +47,42 @@ public class UserServicesImpl implements UserServices {
         return mapToDto(user);
     }
 
+    @Override
+    public UserDTO updateUser(Long id, UserDTO userDTO) {
+        User existingUser = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        existingUser.setName(userDTO.getName());
+        existingUser.setEmail(userDTO.getEmail());
+        User updatedUser = userRepository.save(existingUser);
+        return mapToDto(updatedUser);
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("User not found");
+        }
+        userRepository.deleteById(id);
+    }
+
+    public void markUserAsVoted(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setVoted(true);
+        userRepository.save(user);
+    }
+
 
     private UserDTO mapToDto(User user) {
         UserDTO dto = new UserDTO();
         BeanUtils.copyProperties(user, dto);
         return dto;
     }
+
+    private User mapToEntity(UserDTO dto) {
+        User user = new User();
+        BeanUtils.copyProperties(dto, user);
+        return user;
+    }
+
 }

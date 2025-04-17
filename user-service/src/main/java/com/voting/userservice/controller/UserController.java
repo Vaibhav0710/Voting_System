@@ -19,13 +19,31 @@ public class UserController {
         return ResponseEntity.ok(userService.createUser(dto));
     }
 
+    @PostMapping("updateUser/{id}")
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id,@RequestBody UserDTO dto) {
+        return ResponseEntity.ok(userService.updateUser(id, dto));
+    }
+
+    @PutMapping("/{id}/voted")
+    public ResponseEntity<String> markUserAsVoted(@PathVariable Long id) {
+        userService.markUserAsVoted(id);
+        return ResponseEntity.ok("User voting status updated.");
+    }
+
     @GetMapping("/getAllUsers")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
+
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }
