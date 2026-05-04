@@ -1,0 +1,6 @@
+[submodule "candidate-service"]
+	path = candidate-service
+	url = https://github.com/Vaibhav0710/Voting_Candidate_Service.git
+[submodule "user-service"]
+	path = user-service
+	url = https://github.com/Vaibhav0710/Voting_User_Service.git
