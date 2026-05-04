@@ -1,0 +1,40 @@
+# ─── Graphify / AI agents (local-only) ────────────────────────────
+graphify-out/
+.agents/
+
+# ─── Java / Maven ─────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# ─── IDE ──────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+*.swp
+*~
+
+# ─── OS files ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Environment / Secrets ────────────────────────────────────────
+.env
+*.env.local
+application-local.yml
+
+# ─── Spring Boot ──────────────────────────────────────────────────
+*.pid
+
+# ─── Docker ───────────────────────────────────────────────────────
+docker-compose.override.yml

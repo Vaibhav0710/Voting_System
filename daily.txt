@@ -1,0 +1,43 @@
+Great question. Here's your daily workflow:
+
+🚀 Daily Session Starter
+When you open a new chat, just type something like:
+
+@backend-java @project-architect @IMPLEMENTATION_PLAN.md @PROJECT_PLAN.md
+Continue building the voting system. Pick up where I left off on candidate-service.
+That's it. The @ mentions give me all the context I need:
+
+@backend-java → enforces FAANG-level Java patterns
+@project-architect → keeps architecture decisions consistent
+@IMPLEMENTATION_PLAN.md → I read the checkboxes and find the next unchecked step
+@PROJECT_PLAN.md → I see the big picture and cross-service contracts
+📋 Example Daily Prompts
+Day 1 (today):
+
+@backend-java @IMPLEMENTATION_PLAN.md
+Let's start Step 0 — fix the existing controller to use DTOs and REST conventions
+Day 2:
+
+@backend-java @IMPLEMENTATION_PLAN.md
+Continue — next unchecked step
+When starting a new service later:
+
+@backend-java @project-architect @PROJECT_PLAN.md
+I'm done with candidate-service. Let's start user-service. 
+What's the plan based on PROJECT_PLAN.md?
+When you're unsure what's next:
+
+@IMPLEMENTATION_PLAN.md
+What's my next step? Show me what's done and what's remaining.
+⚡ Quick Rules
+Situation	What to reference
+Working on a specific service	@IMPLEMENTATION_PLAN.md (service-level)
+Deciding what to build next	@PROJECT_PLAN.md (project-level)
+Writing Java code	@backend-java
+Making architecture decisions	@project-architect
+All of the above	Reference all 4
+✅ End-of-Session Habit
+Before you close for the day, ask:
+
+Update IMPLEMENTATION_PLAN.md — check off everything we completed today
+That way next session picks up cleanly. Want to start Step 0 now? 🔧
