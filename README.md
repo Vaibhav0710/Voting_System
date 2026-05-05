@@ -53,8 +53,8 @@ An election voting platform where:
 
 | Service | Responsibility | Port | Database |
 |---------|---------------|------|----------|
-| **User Service** | Auth, JWT, roles (not started) | 8081 | `user_service_db` |
-| **Candidate Service** | Candidate CRUD, status, validation | 8082 | `candidateservice_db` |
+| **User Service** | Auth, JWT, roles (in progress) | 8081 | `user_service_db` |
+| **Candidate Service** | Candidate CRUD, status, validation (complete) | 8082 | `candidateservice_db` |
 | **Voting Service** | Vote casting, hashing, double-vote prevention | 8083 | `voting_service_db` |
 | **Result Service** | Real-time aggregation (Kafka consumer) | 8084 | None (stateless) |
 | **API Gateway** | Routing, rate limiting, JWT validation | 8080 | None |
@@ -89,8 +89,8 @@ Each service has its own GitHub repository for independent CI/CD:
 
 | Repository | Description | Status |
 |-----------|-------------|--------|
-| [`user-service`](https://github.com/<your-username>/user-service) | Authentication, JWT, roles | 🔜 Planned |
-| [`candidate-service`](https://github.com/<your-username>/candidate-service) | Candidate lifecycle management | ⏳ In Progress |
+| [`user-service`](https://github.com/Vaibhav0710/Voting_User_Service) | Authentication, JWT, roles | ⏳ In Progress |
+| [`candidate-service`](https://github.com/Vaibhav0710/Voting_Candidate_Service) | Candidate lifecycle management | ✅ Complete |
 | [`voting-service`](https://github.com/<your-username>/voting-service) | Vote casting, hashing, integrity | 🔜 Planned |
 | [`result-service`](https://github.com/<your-username>/result-service) | Real-time vote aggregation | 🔜 Planned |
 | [`api-gateway`](https://github.com/<your-username>/api-gateway) | Routing, rate limiting, auth filter | 🔜 Planned |
@@ -113,8 +113,8 @@ Each service has its own GitHub repository for independent CI/CD:
 # 1. Clone all repos
 git clone https://github.com/<your-username>/eureka-server.git
 git clone https://github.com/<your-username>/user-service.git
-git clone https://github.com/<your-username>/candidate-service.git
-git clone https://github.com/<your-username>/voting-service.git
+git clone https://github.com/Vaibhav0710/Voting_Candidate_Service.git
+git clone https://github.com/Vaibhav0710/Voting_User_Service.git
 git clone https://github.com/<your-username>/result-service.git
 git clone https://github.com/<your-username>/api-gateway.git
 
@@ -216,4 +216,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 > **Maintainer:** Vaibhav  
-> **Last Updated:** April 15, 2026
+> **Last Updated:** May 4, 2026
