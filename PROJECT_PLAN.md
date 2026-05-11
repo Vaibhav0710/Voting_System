@@ -97,6 +97,21 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 | **Monitoring** | Prometheus + Grafana | Metrics, dashboards, alerting |
 | **Build** | Maven | Dependency & build management |
 | **Containerization** | Docker + Docker Compose | Local development & deployment |
+| **Documentation** | Markdown | Service-level READMEs & implementation plans |
+
+---
+
+## 🔗 Service Repositories
+
+| Service | Repository URL | Status |
+|---------|----------------|--------|
+| **Parent Project** | [Voting_System](https://github.com/Vaibhav0710/Voting_System.git) | 🟢 Active |
+| **User Service** | [Voting_User_Service](https://github.com/Vaibhav0710/Voting_User_Service.git) | 🟢 Active |
+| **Candidate Service** | [Voting_Candidate_Service](https://github.com/Vaibhav0710/Voting_Candidate_Service.git) | 🟢 Active |
+| **API Gateway** | [Voting_Api-Gateway](https://github.com/Vaibhav0710/Voting_Api-Gateway.git) | 🟢 Active |
+| **Eureka Server** | [Voting_Eureka_Server](https://github.com/Vaibhav0710/Voting_Eureka_Server.git) | 🟢 Active |
+| **Voting Service** | TBD | 🔜 Planned |
+| **Result Service** | TBD | 🔜 Planned |
 
 ---
 
@@ -740,6 +755,6 @@ github.com/<your-username>/
 
 ---
 
-> **Last Updated:** April 14, 2026  
-> **Next Active Work:** Milestone 1 — Candidate Service Core CRUD  
+> **Last Updated:** May 11, 2026  
+> **Next Active Work:** Milestone 3 — Voting Service & Blockchain Hashing  
 > **Reference:** [ai-master-prompt.md](ai-master-prompt.md) (original vision document)
