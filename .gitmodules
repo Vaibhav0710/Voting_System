@@ -4,3 +4,9 @@
 [submodule "user-service"]
 	path = user-service
 	url = https://github.com/Vaibhav0710/Voting_User_Service.git
+[submodule "api-gateway"]
+	path = api-gateway
+	url = https://github.com/Vaibhav0710/Voting_Api-Gateway.git
+[submodule "eureka-server"]
+	path = eureka-server
+	url = https://github.com/Vaibhav0710/Voting_Eureka_Server.git

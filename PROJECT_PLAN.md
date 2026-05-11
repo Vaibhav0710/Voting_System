@@ -3,7 +3,7 @@
 > **Goal:** Build a production-grade, tamper-resistant, scalable online voting platform using microservices architecture.  
 > **Author:** Vaibhav  
 > **Started:** April 2026  
-> **Status:** 🟢 Milestone 1 Completed (Foundation)
+> **Status:** 🟢 Milestone 2 Completed (Infrastructure)
 
 ---
 
@@ -555,18 +555,18 @@ github.com/<your-username>/
 
 ---
 
-### Milestone 2: Infrastructure (Week 4)
+### Milestone 2: Infrastructure (Week 4) — ✅ COMPLETED
 > Service discovery, gateway, cross-service communication
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 2.1 | Eureka Server setup | Eureka Server | 🔜 |
-| 2.2 | Register all services as Eureka clients | All services | 🔜 |
-| 2.3 | API Gateway — basic routing | API Gateway | 🔜 |
-| 2.4 | API Gateway — JWT validation filter | API Gateway | 🔜 |
-| 2.5 | API Gateway — rate limiting (Redis) | API Gateway | 🔜 |
-| 2.6 | OpenFeign client setup in Candidate Service | Candidate Service | 🔜 |
-| 2.7 | Verify end-to-end: Client → Gateway → Service → Response | All | 🔜 |
+| 2.1 | Eureka Server setup | Eureka Server | ✅ |
+| 2.2 | Register all services as Eureka clients | All services | ✅ |
+| 2.3 | API Gateway — basic routing | API Gateway | ✅ |
+| 2.4 | API Gateway — JWT validation filter | API Gateway | ✅ |
+| 2.5 | API Gateway — rate limiting (Redis) | API Gateway | ✅ |
+| 2.6 | OpenFeign client setup in Candidate Service | Candidate Service | ✅ |
+| 2.7 | Verify end-to-end: Client → Gateway → Service → Response | All | ✅ |
 
 ---
 
