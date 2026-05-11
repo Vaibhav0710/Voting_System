@@ -3,7 +3,7 @@
 > **Goal:** Build a production-grade, tamper-resistant, scalable online voting platform using microservices architecture.  
 > **Author:** Vaibhav  
 > **Started:** April 2026  
-> **Status:** 🟡 In Progress
+> **Status:** 🟢 Milestone 1 Completed (Foundation)
 
 ---
 
@@ -102,7 +102,7 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 
 ## 🧩 Service Breakdown
 
-### Service 1: User Service ⏳ NOT STARTED
+### Service 1: User Service ✅ COMPLETED
 
 | Attribute | Detail |
 |-----------|--------|
@@ -111,7 +111,7 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 | **Port** | `8081` |
 | **Key Entities** | `User`, `Role` |
 | **Auth** | Issues JWT tokens (consumed by all other services) |
-| **Status** | ⏳ Not Started |
+| **Status** | ✅ Completed |
 
 **API Contract:**
 | Method | Endpoint | Description |
@@ -133,7 +133,7 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 | **Port** | `8082` |
 | **Key Entities** | `Candidate` (with `CandidateStatus` enum) |
 | **Consumers** | Voting Service (validate), Result Service (display) |
-| **Status** | ⏳ In Progress — [See detailed plan](candidate-service/IMPLEMENTATION_PLAN.md) |
+| **Status** | ✅ Foundation Completed — [See detailed plan](candidate-service/src/main/java/com/voting/candidateservice/docs/IMPLEMENTATION_PLAN.md) |
 
 **API Contract:**
 | Method | Endpoint | Description |
@@ -539,19 +539,19 @@ github.com/<your-username>/
 
 ## 🚀 Project Milestones & Build Order
 
-### Milestone 1: Foundation (Weeks 1–3) — 🟡 IN PROGRESS
+### Milestone 1: Foundation (Weeks 1–3) — ✅ COMPLETED
 > Get core services running with basic CRUD
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 1.1 | Candidate Service — Core CRUD APIs (Phase 1) | Candidate Service | ⏳ In Progress |
-| 1.2 | Candidate Service — Election-Scoped APIs (Phase 2) | Candidate Service | 🔜 |
-| 1.3 | Candidate Service — Bulk, Search, Status (Phase 3-4) | Candidate Service | 🔜 |
-| 1.4 | Candidate Service — Exception handling, mapper, config | Candidate Service | 🔜 |
-| 1.5 | User Service — Entity, repository, service setup | User Service | 🔜 |
-| 1.6 | User Service — Registration + Login APIs | User Service | 🔜 |
-| 1.7 | User Service — JWT token generation + validation | User Service | 🔜 |
-| 1.8 | User Service — Role management (ADMIN / VOTER) | User Service | 🔜 |
+| 1.1 | Candidate Service — Core CRUD APIs (Phase 1) | Candidate Service | ✅ Completed |
+| 1.2 | Candidate Service — Election-Scoped APIs (Phase 2) | Candidate Service | ✅ Completed |
+| 1.3 | Candidate Service — Bulk, Search, Status (Phase 3-4) | Candidate Service | ✅ Completed |
+| 1.4 | Candidate Service — Exception handling, mapper, config | Candidate Service | ✅ Completed |
+| 1.5 | User Service — Entity, repository, service setup | User Service | ✅ Completed |
+| 1.6 | User Service — Registration + Login APIs | User Service | ✅ Completed |
+| 1.7 | User Service — JWT token generation + validation | User Service | ✅ Completed |
+| 1.8 | User Service — Role management (ADMIN / VOTER) | User Service | ✅ Completed |
 
 ---
 
