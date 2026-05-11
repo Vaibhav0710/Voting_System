@@ -53,8 +53,8 @@ An election voting platform where:
 
 | Service | Responsibility | Port | Database |
 |---------|---------------|------|----------|
-| **User Service** | Auth, JWT, roles (in progress) | 8081 | `user_service_db` |
-| **Candidate Service** | Candidate CRUD, status, validation (complete) | 8082 | `candidateservice_db` |
+| **User Service** | Auth, JWT, roles | 8081 | `user_service_db` |
+| **Candidate Service** | Candidate CRUD, status, validation | 8082 | `candidateservice_db` |
 | **Voting Service** | Vote casting, hashing, double-vote prevention | 8083 | `voting_service_db` |
 | **Result Service** | Real-time aggregation (Kafka consumer) | 8084 | None (stateless) |
 | **API Gateway** | Routing, rate limiting, JWT validation | 8080 | None |
@@ -89,13 +89,13 @@ Each service has its own GitHub repository for independent CI/CD:
 
 | Repository | Description | Status |
 |-----------|-------------|--------|
-| [`user-service`](https://github.com/Vaibhav0710/Voting_User_Service) | Authentication, JWT, roles | ⏳ In Progress |
+| [`user-service`](https://github.com/Vaibhav0710/Voting_User_Service) | Authentication, JWT, roles | ✅ Complete |
 | [`candidate-service`](https://github.com/Vaibhav0710/Voting_Candidate_Service) | Candidate lifecycle management | ✅ Complete |
-| [`voting-service`](https://github.com/<your-username>/voting-service) | Vote casting, hashing, integrity | 🔜 Planned |
-| [`result-service`](https://github.com/<your-username>/result-service) | Real-time vote aggregation | 🔜 Planned |
-| [`api-gateway`](https://github.com/<your-username>/api-gateway) | Routing, rate limiting, auth filter | 🔜 Planned |
-| [`eureka-server`](https://github.com/<your-username>/eureka-server) | Service registry & discovery | 🔜 Planned |
-| [`voting-system-docs`](https://github.com/<your-username>/voting-system-docs) | This repo — architecture & infra | 📄 Active |
+| [`api-gateway`](https://github.com/Vaibhav0710/Voting_Api-Gateway) | Routing, rate limiting, auth filter | ✅ Complete |
+| [`eureka-server`](https://github.com/Vaibhav0710/Voting_Eureka_Server) | Service registry & discovery | ✅ Complete |
+| [`voting-service`](https://github.com/Vaibhav0710/voting-service) | Vote casting, hashing, integrity | 🔜 Planned |
+| [`result-service`](https://github.com/Vaibhav0710/result-service) | Real-time vote aggregation | 🔜 Planned |
+| [`voting-system-docs`](https://github.com/Vaibhav0710/Voting_System) | Main Orchestrator — architecture & infra | 📄 Active |
 
 ---
 
@@ -111,12 +111,10 @@ Each service has its own GitHub repository for independent CI/CD:
 
 ```bash
 # 1. Clone all repos
-git clone https://github.com/<your-username>/eureka-server.git
-git clone https://github.com/<your-username>/user-service.git
-git clone https://github.com/Vaibhav0710/Voting_Candidate_Service.git
+git clone https://github.com/Vaibhav0710/Voting_Eureka_Server.git
 git clone https://github.com/Vaibhav0710/Voting_User_Service.git
-git clone https://github.com/<your-username>/result-service.git
-git clone https://github.com/<your-username>/api-gateway.git
+git clone https://github.com/Vaibhav0710/Voting_Candidate_Service.git
+git clone https://github.com/Vaibhav0710/Voting_Api-Gateway.git
 
 # 2. Start infrastructure (Kafka, Redis, PostgreSQL)
 docker-compose up -d
@@ -160,8 +158,8 @@ curl http://localhost:8080/actuator/health  # Gateway health
 
 | # | Milestone | Timeline | Status |
 |---|-----------|----------|--------|
-| 1 | **Foundation** — Candidate + User Services | Weeks 1–3 | 🟡 In Progress |
-| 2 | **Infrastructure** — Eureka + Gateway + Feign | Week 4 | 🔜 |
+| 1 | **Foundation** — Candidate + User Services | Weeks 1–3 | ✅ Complete |
+| 2 | **Infrastructure** — Eureka + Gateway + Feign | Week 4 | ✅ Complete |
 | 3 | **Voting Service** — Core vote casting | Weeks 5–6 | 🔜 |
 | 4 | **Event-Driven** — Kafka integration | Week 7 | 🔜 |
 | 5 | **Result Service** — Real-time aggregation | Week 8 | 🔜 |
@@ -216,4 +214,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 > **Maintainer:** Vaibhav  
-> **Last Updated:** May 4, 2026
+> **Last Updated:** May 11, 2026

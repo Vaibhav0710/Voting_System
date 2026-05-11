@@ -32,22 +32,22 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
                                              │
                     ┌──────────┬─────────────┼─────────────┬──────────┐
                     │          │             │             │          │
-           ┌────────▼──┐  ┌───▼──────┐  ┌───▼──────┐  ┌──▼───────┐  │
-           │   USER    │  │CANDIDATE │  │  VOTING  │  │  RESULT  │  │
-           │  SERVICE  │  │ SERVICE  │  │ SERVICE  │  │ SERVICE  │  │
-           │           │  │          │  │          │  │          │  │
-           │ • Auth    │  │ • CRUD   │  │ • Cast   │  │ • Tally  │  │
-           │ • JWT     │  │ • Status │  │ • Hash   │  │ • Live   │  │
-           │ • Roles   │  │ • Bulk   │  │ • Chain  │  │ • Audit  │  │
-           └─────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘  │
+           ┌────────▼──┐  ┌───▼──────┐  ┌───▼──────┐  ┌──▼───────┐    │
+           │   USER    │  │CANDIDATE │  │  VOTING  │  │  RESULT  │    │
+           │  SERVICE  │  │ SERVICE  │  │ SERVICE  │  │ SERVICE  │    │
+           │           │  │          │  │          │  │          │    │
+           │ • Auth    │  │ • CRUD   │  │ • Cast   │  │ • Tally  │    │
+           │ • JWT     │  │ • Status │  │ • Hash   │  │ • Live   │    │
+           │ • Roles   │  │ • Bulk   │  │ • Chain  │  │ • Audit  │    │
+           └─────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘    │
                  │             │             │             │          │
-           ┌─────▼─────┐ ┌────▼─────┐ ┌─────▼─────┐      │          │
-           │PostgreSQL │ │PostgreSQL│ │PostgreSQL │  (No DB)         │
-           │user_db    │ │candidate │ │voting_db  │  Reads from      │
+           ┌─────▼─────┐ ┌────▼─────┐ ┌─────▼─────┐      │            │
+           │PostgreSQL │ │PostgreSQL│ │PostgreSQL │  (No DB)          │
+           │user_db    │ │candidate │ │voting_db  │  Reads from       │
            │           │ │_db       │ │           │  Voting Service   │
-           └───────────┘ └──────────┘ └───────────┘                  │
-                                                                     │
-                              ┌──────────────────────────────────────┘
+           └───────────┘ └──────────┘ └───────────┘                   │
+                                                                      │
+                              ┌───────────────────────────────────────┘
                               │
                    ┌──────────▼──────────┐
                    │   EUREKA SERVER     │
@@ -494,54 +494,40 @@ Result Service → No database (reads via Kafka + Feign)
 Each service is its own GitHub repository:
 
 ```
-github.com/<your-username>/
-├── user-service/              ← ✅ DONE
+github.com/Vaibhav0710/
+├── Voting_User_Service/       ← ✅ DONE
 │   ├── src/
 │   ├── pom.xml
 │   ├── README.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   └── Dockerfile
 │
-├── candidate-service/         ← ⏳ IN PROGRESS
+├── Voting_Candidate_Service/  ← ✅ DONE
 │   ├── src/
 │   ├── pom.xml
 │   ├── README.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   └── Dockerfile
 │
-├── voting-service/            ← ⏳ NOT STARTED
+├── Voting_Api-Gateway/        ← ✅ DONE
 │   ├── src/
 │   ├── pom.xml
 │   ├── README.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   └── Dockerfile
 │
-├── result-service/            ← ⏳ NOT STARTED
+├── Voting_Eureka_Server/      ← ✅ DONE
 │   ├── src/
 │   ├── pom.xml
 │   ├── README.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   └── Dockerfile
 │
-├── api-gateway/               ← ⏳ NOT STARTED
-│   ├── src/
-│   ├── pom.xml
-│   ├── README.md
-│   └── Dockerfile
-│
-├── eureka-server/             ← ⏳ NOT STARTED
-│   ├── src/
-│   ├── pom.xml
-│   ├── README.md
-│   └── Dockerfile
-│
-└── voting-system-infra/       ← DevOps / Infrastructure repo
-    ├── docker-compose.yml     (runs ALL services locally)
-    ├── PROJECT_PLAN.md        (this file — master reference)
-    ├── ai-master-prompt.md    (original prompt)
-    ├── k8s/                   (Kubernetes manifests — future)
-    ├── kafka/                 (topic definitions)
-    └── monitoring/            (Prometheus, Grafana configs)
+├── voting-service/            ← 🔜 PLANNED
+├── result-service/            ← 🔜 PLANNED
+└── voting-system-docs/        ← 📄 ACTIVE (This repo)
+    ├── PROJECT_PLAN.md
+    └── README.md
 ```
 
 ### Why Multi-Repo?
