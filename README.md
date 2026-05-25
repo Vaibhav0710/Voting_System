@@ -115,17 +115,18 @@ git clone https://github.com/Vaibhav0710/Voting_Eureka_Server.git
 git clone https://github.com/Vaibhav0710/Voting_User_Service.git
 git clone https://github.com/Vaibhav0710/Voting_Candidate_Service.git
 git clone https://github.com/Vaibhav0710/Voting_Api-Gateway.git
+git clone https://github.com/Vaibhav0710/Voting_Voting_Service.git
 
 # 2. Start infrastructure (Kafka, Redis, PostgreSQL)
 docker-compose up -d
 
 # 3. Start services IN ORDER
-cd eureka-server    && mvn spring-boot:run &
-cd user-service     && mvn spring-boot:run &
-cd candidate-service && mvn spring-boot:run &
-cd voting-service   && mvn spring-boot:run &
-cd result-service   && mvn spring-boot:run &
-cd api-gateway      && mvn spring-boot:run &
+cd Voting_Eureka_Server     && mvn spring-boot:run &
+cd Voting_User_Service      && mvn spring-boot:run &
+cd Voting_Candidate_Service && mvn spring-boot:run &
+cd Voting_Voting_Service    && mvn spring-boot:run &
+cd result-service           && mvn spring-boot:run &
+cd Voting_Api-Gateway       && mvn spring-boot:run &
 
 # 4. Verify
 curl http://localhost:8761         # Eureka dashboard
