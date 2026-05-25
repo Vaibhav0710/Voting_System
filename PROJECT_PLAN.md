@@ -3,7 +3,7 @@
 > **Goal:** Build a production-grade, tamper-resistant, scalable online voting platform using microservices architecture.  
 > **Author:** Vaibhav  
 > **Started:** April 2026  
-> **Status:** 🟢 Milestone 2 Completed (Infrastructure)
+> **Status:** 🟢 Milestone 4 Completed (Event-Driven Architecture)
 
 ---
 
@@ -110,7 +110,7 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 | **Candidate Service** | [Voting_Candidate_Service](https://github.com/Vaibhav0710/Voting_Candidate_Service.git) | 🟢 Active |
 | **API Gateway** | [Voting_Api-Gateway](https://github.com/Vaibhav0710/Voting_Api-Gateway.git) | 🟢 Active |
 | **Eureka Server** | [Voting_Eureka_Server](https://github.com/Vaibhav0710/Voting_Eureka_Server.git) | 🟢 Active |
-| **Voting Service** | TBD | 🔜 Planned |
+| **Voting Service** | Active Repository | 🟢 Active |
 | **Result Service** | TBD | 🔜 Planned |
 
 ---
@@ -176,7 +176,7 @@ UNIQUE(name, election_id)
 
 ---
 
-### Service 3: Voting Service ⏳ NOT STARTED
+### Service 3: Voting Service ✅ COMPLETED
 
 > **CRITICAL SERVICE** — This is the heart of the system.
 
@@ -187,7 +187,7 @@ UNIQUE(name, election_id)
 | **Port** | `8083` |
 | **Key Entities** | `Vote` (with hash, prevHash, chain fields) |
 | **Dependencies** | User Service (validate voter), Candidate Service (validate candidate) |
-| **Status** | ⏳ Not Started |
+| **Status** | ✅ Completed |
 
 **API Contract:**
 | Method | Endpoint | Description |
@@ -571,34 +571,34 @@ github.com/Vaibhav0710/
 
 ---
 
-### Milestone 3: Voting Service — The Heart (Weeks 5–6)
+### Milestone 3: Voting Service — The Heart (Weeks 5–6) — ✅ COMPLETED
 > Most critical and complex service
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 3.1 | Vote entity + schema (with hash fields) | Voting Service | 🔜 |
-| 3.2 | Vote casting API — basic flow | Voting Service | 🔜 |
-| 3.3 | OpenFeign → Candidate Service (validate candidate) | Voting Service | 🔜 |
-| 3.4 | Double-vote prevention — Redis layer | Voting Service | 🔜 |
-| 3.5 | Double-vote prevention — DB unique constraint | Voting Service | 🔜 |
-| 3.6 | Vote hashing (SHA-256) | Voting Service | 🔜 |
-| 3.7 | Idempotency key support (Redis) | Voting Service | 🔜 |
-| 3.8 | Vote receipt response | Voting Service | 🔜 |
-| 3.9 | Vote verification API (hash check) | Voting Service | 🔜 |
-| 3.10 | Concurrency testing (simulate race conditions) | Voting Service | 🔜 |
+| 3.1 | Vote entity + schema (with hash fields) | Voting Service | ✅ |
+| 3.2 | Vote casting API — basic flow | Voting Service | ✅ |
+| 3.3 | OpenFeign → Candidate Service (validate candidate) | Voting Service | ✅ |
+| 3.4 | Double-vote prevention — Redis layer | Voting Service | ✅ |
+| 3.5 | Double-vote prevention — DB unique constraint | Voting Service | ✅ |
+| 3.6 | Vote hashing (SHA-256) | Voting Service | ✅ |
+| 3.7 | Idempotency key support (Redis) | Voting Service | ✅ |
+| 3.8 | Vote receipt response | Voting Service | ✅ |
+| 3.9 | Vote verification API (hash check) | Voting Service | ✅ |
+| 3.10 | Concurrency testing (simulate race conditions) | Voting Service | ✅ |
 
 ---
 
-### Milestone 4: Event-Driven Architecture (Week 7)
+### Milestone 4: Event-Driven Architecture (Week 7) — ✅ COMPLETED
 > Wire up Kafka for asynchronous communication
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 4.1 | Kafka + Zookeeper setup (Docker) | Infrastructure | 🔜 |
-| 4.2 | Candidate Service — Kafka producer (candidate events) | Candidate Service | 🔜 |
-| 4.3 | Voting Service — Kafka producer (vote.cast events) | Voting Service | 🔜 |
-| 4.4 | Voting Service — Kafka consumer (candidate.status-changed) | Voting Service | 🔜 |
-| 4.5 | Define topic schemas / contracts | Infrastructure | 🔜 |
+| 4.1 | Kafka + Zookeeper setup (Docker) | Infrastructure | ✅ |
+| 4.2 | Candidate Service — Kafka producer (candidate events) | Candidate Service | ✅ |
+| 4.3 | Voting Service — Kafka producer (vote.cast events) | Voting Service | ✅ |
+| 4.4 | Voting Service — Kafka consumer (candidate.status-changed) | Voting Service | ✅ |
+| 4.5 | Define topic schemas / contracts | Infrastructure | ✅ |
 
 ---
 
@@ -741,6 +741,6 @@ github.com/Vaibhav0710/
 
 ---
 
-> **Last Updated:** May 11, 2026  
-> **Next Active Work:** Milestone 3 — Voting Service & Blockchain Hashing  
+> **Last Updated:** May 25, 2026  
+> **Next Active Work:** Milestone 5 — Result Service (Week 8)  
 > **Reference:** [ai-master-prompt.md](ai-master-prompt.md) (original vision document)

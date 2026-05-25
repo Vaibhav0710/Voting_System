@@ -16,6 +16,7 @@
         <module>api-gateway</module>
         <module>candidate-service</module>
         <module>user-service</module>
+        <module>voting-service</module>
     </modules>
 
 </project>
