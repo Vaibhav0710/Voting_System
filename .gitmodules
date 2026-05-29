@@ -13,3 +13,6 @@
 [submodule "voting-service"]
 	path = voting-service
 	url = https://github.com/Vaibhav0710/Voting_Voting_Service.git
+[submodule "result-service"]
+	path = result-service
+	url = https://github.com/Vaibhav0710/Voting_Result_Service.git

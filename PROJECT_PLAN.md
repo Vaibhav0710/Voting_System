@@ -3,7 +3,7 @@
 > **Goal:** Build a production-grade, tamper-resistant, scalable online voting platform using microservices architecture.  
 > **Author:** Vaibhav  
 > **Started:** April 2026  
-> **Status:** 🟢 Milestone 4 Completed (Event-Driven Architecture)
+> **Status:** 🟢 Milestone 5 Completed (Result Service)
 
 ---
 
@@ -110,8 +110,8 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 | **Candidate Service** | [Voting_Candidate_Service](https://github.com/Vaibhav0710/Voting_Candidate_Service.git) | 🟢 Active |
 | **API Gateway** | [Voting_Api-Gateway](https://github.com/Vaibhav0710/Voting_Api-Gateway.git) | 🟢 Active |
 | **Eureka Server** | [Voting_Eureka_Server](https://github.com/Vaibhav0710/Voting_Eureka_Server.git) | 🟢 Active |
-| **Voting Service** | Active Repository | 🟢 Active |
-| **Result Service** | TBD | 🔜 Planned |
+| **Voting Service** | [Voting_Voting_Service](https://github.com/Vaibhav0710/Voting_Voting_Service.git) | 🟢 Active |
+| **Result Service** | [Voting_Result_Service](https://github.com/Vaibhav0710/Voting_Result_Service.git) | 🟢 Active |
 
 ---
 
@@ -237,7 +237,7 @@ vote_hash = SHA-256(userId + candidateId + electionId + timestamp + prevHash)
 
 ---
 
-### Service 4: Result Service ⏳ NOT STARTED
+### Service 4: Result Service ✅ COMPLETED
 
 | Attribute | Detail |
 |-----------|--------|
@@ -246,7 +246,7 @@ vote_hash = SHA-256(userId + candidateId + electionId + timestamp + prevHash)
 | **Port** | `8084` |
 | **Key Design** | Stateless aggregation service, consumes Kafka events |
 | **Dependencies** | Voting Service (vote data), Candidate Service (candidate names) |
-| **Status** | ⏳ Not Started |
+| **Status** | ✅ Completed |
 
 **API Contract:**
 | Method | Endpoint | Description |
@@ -266,7 +266,7 @@ vote_hash = SHA-256(userId + candidateId + electionId + timestamp + prevHash)
 
 ---
 
-### Service 5: API Gateway ⏳ NOT STARTED
+### Service 5: API Gateway ✅ COMPLETED
 
 | Attribute | Detail |
 |-----------|--------|
@@ -274,7 +274,7 @@ vote_hash = SHA-256(userId + candidateId + electionId + timestamp + prevHash)
 | **Database** | None |
 | **Port** | `8080` (public-facing) |
 | **Technology** | Spring Cloud Gateway |
-| **Status** | ⏳ Not Started |
+| **Status** | ✅ Completed |
 
 **Route Configuration:**
 | Route Pattern | Service | Auth Required |
@@ -293,14 +293,14 @@ vote_hash = SHA-256(userId + candidateId + electionId + timestamp + prevHash)
 
 ---
 
-### Service 6: Eureka Server ⏳ NOT STARTED
+### Service 6: Eureka Server ✅ COMPLETED
 
 | Attribute | Detail |
 |-----------|--------|
 | **Responsibility** | Service registry and discovery |
 | **Port** | `8761` |
 | **Technology** | Spring Cloud Netflix Eureka Server |
-| **Status** | ⏳ Not Started |
+| **Status** | ✅ Completed |
 
 **Simple Setup:**
 - `@EnableEurekaServer` on main class
@@ -602,18 +602,18 @@ github.com/Vaibhav0710/
 
 ---
 
-### Milestone 5: Result Service (Week 8)
+### Milestone 5: Result Service (Week 8) — ✅ COMPLETED
 > Real-time vote aggregation
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 5.1 | Result Service — project setup (no DB) | Result Service | 🔜 |
-| 5.2 | Kafka consumer for `vote.cast` events | Result Service | 🔜 |
-| 5.3 | In-memory + Redis counters for tallying | Result Service | 🔜 |
-| 5.4 | OpenFeign → Candidate Service (enrich results with names) | Result Service | 🔜 |
-| 5.5 | Election results API | Result Service | 🔜 |
-| 5.6 | Live results — SSE or WebSocket endpoint | Result Service | 🔜 |
-| 5.7 | Audit trail API | Result Service | 🔜 |
+| 5.1 | Result Service — project setup (no DB) | Result Service | ✅ |
+| 5.2 | Kafka consumer for `vote.cast` events | Result Service | ✅ |
+| 5.3 | In-memory + Redis counters for tallying | Result Service | ✅ |
+| 5.4 | OpenFeign → Candidate Service (enrich results with names) | Result Service | ✅ |
+| 5.5 | Election results API | Result Service | ✅ |
+| 5.6 | Live results — SSE endpoint | Result Service | ✅ |
+| 5.7 | Audit trail API | Result Service | ✅ |
 
 ---
 
@@ -741,6 +741,6 @@ github.com/Vaibhav0710/
 
 ---
 
-> **Last Updated:** May 25, 2026  
-> **Next Active Work:** Milestone 5 — Result Service (Week 8)  
+> **Last Updated:** May 29, 2026  
+> **Next Active Work:** Milestone 6 — Resilience & Caching (Week 9)  
 > **Reference:** [ai-master-prompt.md](ai-master-prompt.md) (original vision document)

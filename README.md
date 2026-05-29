@@ -94,7 +94,7 @@ Each service has its own GitHub repository for independent CI/CD:
 | [`api-gateway`](https://github.com/Vaibhav0710/Voting_Api-Gateway) | Routing, rate limiting, auth filter | ✅ Complete |
 | [`eureka-server`](https://github.com/Vaibhav0710/Voting_Eureka_Server) | Service registry & discovery | ✅ Complete |
 | [`voting-service`](https://github.com/Vaibhav0710/Voting_Voting_Service) | Vote casting, hashing, integrity | ✅ Complete |
-| [`result-service`](https://github.com/Vaibhav0710/result-service) | Real-time vote aggregation | 🔜 Planned |
+| [`result-service`](https://github.com/Vaibhav0710/Voting_Result_Service) | Real-time vote aggregation | ✅ Complete |
 | [`voting-system-docs`](https://github.com/Vaibhav0710/Voting_System) | Main Orchestrator — architecture & infra | 📄 Active |
 
 ---
@@ -116,6 +116,7 @@ git clone https://github.com/Vaibhav0710/Voting_User_Service.git
 git clone https://github.com/Vaibhav0710/Voting_Candidate_Service.git
 git clone https://github.com/Vaibhav0710/Voting_Api-Gateway.git
 git clone https://github.com/Vaibhav0710/Voting_Voting_Service.git
+git clone https://github.com/Vaibhav0710/Voting_Result_Service.git
 
 # 2. Start infrastructure (Kafka, Redis, PostgreSQL)
 docker-compose up -d
@@ -125,7 +126,7 @@ cd Voting_Eureka_Server     && mvn spring-boot:run &
 cd Voting_User_Service      && mvn spring-boot:run &
 cd Voting_Candidate_Service && mvn spring-boot:run &
 cd Voting_Voting_Service    && mvn spring-boot:run &
-cd result-service           && mvn spring-boot:run &
+cd Voting_Result_Service    && mvn spring-boot:run &
 cd Voting_Api-Gateway       && mvn spring-boot:run &
 
 # 4. Verify
@@ -163,7 +164,7 @@ curl http://localhost:8080/actuator/health  # Gateway health
 | 2 | **Infrastructure** — Eureka + Gateway + Feign | Week 4 | ✅ Complete |
 | 3 | **Voting Service** — Core vote casting | Weeks 5–6 | ✅ Complete |
 | 4 | **Event-Driven** — Kafka integration | Week 7 | ✅ Complete |
-| 5 | **Result Service** — Real-time aggregation | Week 8 | 🔜 |
+| 5 | **Result Service** — Real-time aggregation | Week 8 | ✅ Complete |
 | 6 | **Resilience** — Caching + Circuit breakers | Week 9 | 🔜 |
 | 7 | **Security** — Hardening all endpoints | Week 10 | 🔜 |
 | 8 | **Observability** — ELK + Prometheus + Grafana | Week 11 | 🔜 |
@@ -215,4 +216,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 > **Maintainer:** Vaibhav  
-> **Last Updated:** May 25, 2026
+> **Last Updated:** May 29, 2026
