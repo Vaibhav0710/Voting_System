@@ -96,6 +96,8 @@ No foreign keys cross services. `votes.candidate_id` refers to `candidates.exter
 | `res:votes:{electionId}` | hash candidateId → count | result | none | tally |
 | `res:total:{electionId}` | string counter | result | none | total votes |
 | `res:seen:{electionId}` | set of vote ids | result | none | redelivery de-duplication |
+| `candidate::{candidateId}` | JSON (typed) | candidate | 10 min | cached `GET /candidates/{id}` |
+| `candidatesByElection::{electionId}`, `activeCandidatesByElection::{electionId}` | JSON list | candidate | 10 min | cached election lists; evicted on every candidate write |
 | `request_rate_limiter.{key}.*` | gateway | short | token bucket state |
 
 Redis is never the source of truth. Losing it loses fast paths and live tallies, but no votes.

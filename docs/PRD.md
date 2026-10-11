@@ -68,7 +68,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 ## 7. Success measures
 - 0 double votes in the concurrency stress test (met: 50/50 concurrent attempts → 1 stored).
 - Chain validation reports 0 broken links after concurrent load (met in the H2 integration test).
-- All service test suites green (user 26/26, candidate 41/41, voting 54/54, result 28/28 as of 2026-10-11).
+- All service test suites green (user 26/26, candidate 58/58, voting 54/54, result 28/28 as of 2026-10-11).
 - Load test meets the p95 target (pending M10).
 
 ## 8. Scope and roadmap
@@ -76,7 +76,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 |---|---|---|
 | M1–M5 | Candidate, user, Eureka, gateway, voting, Kafka, result services | done |
 | Fix pass | 12 review bugs (JWT parsing, candidate validation, admin self-registration, idempotency, chain race, audit, …) | done except user-service tests |
-| M6 | Resilience4j + caching | partly done (voting, result); candidate Redis cache and gateway breakers planned |
+| M6 | Resilience4j + caching | done in voting, result, candidate; gateway circuit breakers planned (batch 5) |
 | M7 | Security hardening (gateway header spoofing, CORS, audit log) | planned |
 | M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | planned |
 | M9 | Dockerfiles, full compose, profiles, K8s | planned |

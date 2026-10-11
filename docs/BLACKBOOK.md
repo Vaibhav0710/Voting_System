@@ -58,7 +58,7 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 | Concurrency: 50 parallel votes, same voter | exactly 1 stored, 49 × 409 (`VoteConcurrencyIntegrationTest`) |
 | Concurrency: 50 parallel voters, one election | chain valid, 50 votes, 0 broken links |
 | Retry + fallback wiring | 3 attempts on 503, then cached-status decision (integration test) |
-| Test suites (2026-10-11) | user 26/26, candidate 41/41, voting 54/54, result 28/28 |
+| Test suites (2026-10-11) | user 26/26, candidate 58/58, voting 54/54, result 28/28 |
 | Load test (p95 at 10k concurrent votes) | not yet measured (M10) |
 
 ## Challenges
@@ -81,6 +81,27 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 ---
 
 # Part 2 — Log (newest first)
+
+### 2026-10-11 — Batch 4: candidate-service caching, events and hardening (no commits)
+- **Incident (pushed state):** batches 1–3 were committed on a detached HEAD inside the user- and voting-service
+  submodules, and the root repo was pushed pointing at commits that GitHub did not have. **Fix:** fast-forwarded
+  `main` to those commits and pushed. **Rule added to CLAUDE.md:** check a service is on `main` before editing it.
+- **Kafka events:** sent only after the DB commit (`TransactionSynchronization.afterCommit`; nothing on rollback),
+  keyed by candidate id, no Java type headers, broker failures logged instead of thrown, `max.block.ms` 5 s.
+- **Redis read cache (M6.1):** `candidate` (by id) and `candidatesByElection` / `activeCandidatesByElection`, 10 min TTL,
+  evicted on every write. One typed Jackson serializer per cache, so there is no class metadata in Redis.
+  `LoggingCacheErrorHandler` means a Redis outage falls back to the database. The vote-time `/validate` endpoint is
+  deliberately not cached, so status changes take effect immediately for voting.
+- **Hardening:** `@PreAuthorize("hasRole('ADMIN')")` on all writes (on top of the URL rules); JSON 401/403;
+  `@Size` limits (name/party ≤ 100, bulk ≤ 500). **Incident:** the generic 500 handler echoed exception text
+  (the test showed `connection to db-host:5432 refused` reaching the client). It now logs the error and returns a fixed message.
+- **Config:** Kafka/Eureka from env vars, `show-sql` off, actuator health/info/prometheus with probes. Removed the unused
+  `app.jwt.expiration`, whose required `${JWT_EXPIRATION}` placeholder blocked startup without the env var.
+- README fixed: test count, roles, events, config; the `VOTING_DB_URL` example doubled the DB name; dead links to deleted docs.
+- Tests: **58/58** (was 41). New: `CandidateEventProducerTest` (5), `CandidateCachingTest` (5, through the real cache
+  proxy), `CacheConfigTest` (3), plus security/limit tests (3) and a "500 does not leak" test.
+- **Not verified:** the cache was not run against a real Redis (no Docker here). The serializers are tested directly
+  and the annotations with an in-memory cache. That gap gets closed in batch 7–8.
 
 ### 2026-10-11 — Batches 1–3: user-service finished, voting and result reviewed (no commits)
 - **user-service done:** the `GlobalExceptionHandler` now rethrows Spring Security exceptions (method-security

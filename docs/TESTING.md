@@ -20,7 +20,7 @@ There is no single root build yet. The root `pom.xml` lists `result-service`, wh
 | Service | Tests | Result |
 |---|---|---|
 | user-service | 26 | 26 pass (was 15; added admin seeder, users API, role-ignored and 401 tests) |
-| candidate-service | 41 | 41 pass (was 1 failure + 5 errors) |
+| candidate-service | 58 | 58 pass (was 41 with 1 failure + 5 errors) |
 | voting-service | 54 | 54 pass (had no tests before) |
 | result-service | 28 | 28 pass (was 1 failure) |
 | api-gateway | 0 | none yet (planned M7) |

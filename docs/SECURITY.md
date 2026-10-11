@@ -76,6 +76,8 @@ Actuator: only `health`, `info`, `prometheus` are exposed (unauthenticated), so 
 | Client spoofing `loggedInUser`/`role` headers to dodge rate limits | strip inbound headers at the gateway | **planned (M7)** |
 | Gateway open-path match uses `contains` | prefix matching | **planned (M7)** |
 | Brute-force login | gateway rate limit (10/s, burst 20 on auth routes) | partial |
+| Oversized input (huge names, giant bulk requests) | `@Size` limits: names/parties ≤ 100, bulk ≤ 500, passwords 8–72 | done (candidate, user) |
+| Malicious data in the Redis cache | typed JSON serializers per cache, no Java type info (no polymorphic deserialization) | done (candidate) |
 | CORS | gateway `globalcors` with allowed origins from env | **planned (M7)** |
 
 ## 8. Hard rules

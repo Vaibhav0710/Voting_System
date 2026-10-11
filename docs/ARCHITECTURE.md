@@ -32,7 +32,7 @@ userservice_db candidate-  │  voting_service_db     │
 | **eureka-server** | Service registry (`@EnableEurekaServer`, does not self-register) | — |
 | **api-gateway** | Single entry point; routes `/api/v1/auth/**`, `/users/**`, `/candidates/**`, `/votes/**`, `/results/**`; `AuthenticationFilter` validates the bearer token through user-service and adds `loggedInUser`/`role` headers; `RequestRateLimiter` (Redis token bucket, key = user id, else client IP) | user-service, Redis |
 | **user-service** | Users, BCrypt passwords, JWT issuing and validation, admin bootstrap | Postgres |
-| **candidate-service** | Candidates (status, soft delete), validation endpoint, `candidate.*` events, demo data seeder | Postgres, Kafka |
+| **candidate-service** | Candidates (status, soft delete), validation endpoint (never cached), Redis read caches, after-commit `candidate.*` events, demo data seeder | Postgres, Redis, Kafka |
 | **voting-service** | Votes: idempotency, double-vote defence, hashing, chain, verification, counts, `vote.*` events, candidate status cache | Postgres, Redis, Kafka, candidate-service (Feign) |
 | **result-service** | Live tallies in Redis, results/summary, SSE live feed, admin audit trail | Redis, Kafka, candidate-service + voting-service (Feign) |
 
@@ -65,10 +65,10 @@ Every service except eureka validates the JWT itself (shared HS256 secret), so i
 |---|---|---|---|---|
 | `vote.cast` | voting | electionId | `{voteId, userId, candidateId, electionId, voteHash, timestamp}` | result |
 | `vote.verified` | voting | none | `{voteId, hashValid, status, storedHash, computedHash, message}` | none yet |
-| `candidate.created` / `candidate.status-changed` / `candidate.deleted` | candidate | none | `{id, name, party, electionId, status, createdAt, updatedAt}` | voting |
+| `candidate.created` / `candidate.status-changed` / `candidate.deleted` | candidate (after commit) | candidateId | `{id, name, party, electionId, status, createdAt, updatedAt}` | voting |
 
 Consumers ignore Java type headers and use `ErrorHandlingDeserializer` (bad records are logged and skipped).
-Voting's producer no longer adds type headers. Candidate's producer still does, which is harmless now that consumers ignore them.
+Producers send plain JSON without Java type headers. Both producers send only after the DB commit and log (not throw) broker failures, with `max.block.ms` 5 s.
 
 **Redis keys:** see `DATABASE.md` §5.
 
