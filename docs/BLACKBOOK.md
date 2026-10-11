@@ -1,0 +1,142 @@
+# BLACKBOOK — Blockchain-Inspired Online Voting System
+
+# Part 1 — Project report
+
+**Title:** Blockchain-Inspired Online Voting System: a tamper-evident, event-driven microservices platform
+**Author:** Vaibhav Jain · **Started:** April 2026 · **Report date:** 2026-10-10
+**Repositories:** `Vaibhav0710/Voting_System` (orchestrator) plus one repo per service (see `ARCHITECTURE.md`)
+
+## Abstract
+An API-only election platform of six Spring Boot microservices (gateway, registry, users, candidates, voting, results)
+communicating through OpenFeign and Apache Kafka. Each vote is hashed with SHA-256 and linked to the previous vote of
+its election, forming a per-election hash chain that makes tampering detectable. Double voting is prevented in layers:
+an idempotency key, a Redis flag and a database unique constraint, verified under 50 concurrent requests. Results are
+aggregated in real time from Kafka events into Redis and streamed to clients with Server-Sent Events.
+
+## Problem statement
+Online voting needs at-most-once voting under concurrency and retries, evidence that stored votes were not altered, and
+fast results under load. A monolithic CRUD approach struggles with all three.
+
+## Objectives
+1. Strict one-vote-per-user-per-election, including under races and client retries.
+2. Tamper evidence (per-vote hash, per-election chain, verification APIs).
+3. Independently deployable services with their own data stores.
+4. Real-time results decoupled from the write path.
+5. Graceful degradation when dependencies fail.
+
+## Scope
+In scope: registration/login, candidate management, voting, verification, results, audit trail, gateway, discovery.
+Out of scope for now: identity proofing, eligibility lists, election scheduling, secret-ballot cryptography, UI.
+
+## Methodology
+Iterative milestones (`PROJECT_PLAN.md`): foundation services, then infrastructure, the voting core, Kafka, and results.
+Built one service and one step at a time, with test-first development from the 2026-10-10 review onward.
+
+## System design
+See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md` (schemas, Redis keys).
+
+## Modules
+| Module | Summary |
+|---|---|
+| eureka-server | Service registry |
+| api-gateway | Routing, token check via user-service, Redis rate limiting |
+| user-service | Users, BCrypt, JWT issuing, admin bootstrap, user lookups |
+| candidate-service | Candidate lifecycle, validation endpoint, Kafka events, seed data |
+| voting-service | Vote casting, idempotency, hash chain, verification, counts, events, candidate status cache, Resilience4j |
+| result-service | Idempotent Redis tallies, results/summary, SSE, admin audit trail, Resilience4j |
+
+## Implementation highlights
+- **Row-locked hash chain:** `election_chain_heads` row per election, `SELECT … FOR UPDATE`, seeded from existing votes so old chains continue.
+- **After-commit side effects:** Redis flags and Kafka `vote.cast` only after the DB transaction commits.
+- **Idempotent consumer:** a Lua script adds the vote id to a set and increments the counters only if it is new.
+- **Resilience:** Retry(3) → CircuitBreaker → Bulkhead around candidate validation, with a fallback to a Kafka-fed status cache.
+- **Defence-in-depth auth:** every service verifies the JWT itself; JSON 401/403; no leaked 500 messages.
+
+## Results
+| Evidence | Value |
+|---|---|
+| Concurrency: 50 parallel votes, same voter | exactly 1 stored, 49 × 409 (`VoteConcurrencyIntegrationTest`) |
+| Concurrency: 50 parallel voters, one election | chain valid, 50 votes, 0 broken links |
+| Retry + fallback wiring | 3 attempts on 503, then cached-status decision (integration test) |
+| Test suites (2026-10-11) | user 26/26, candidate 41/41, voting 54/54, result 28/28 |
+| Load test (p95 at 10k concurrent votes) | not yet measured (M10) |
+
+## Challenges
+- JWT contract drift between services (subject vs `userId` claim) silently broke authentication downstream.
+- An HTTP 200 + `valid:false` contract read with a `void` Feign method accepted invalid candidates.
+- Chaining without a lock forks the chain under concurrency.
+- Resilience4j aspect order: a fallback on the CircuitBreaker swallowed errors before Retry could retry.
+- Spring Security exceptions caught by a generic `@ExceptionHandler(Exception)` became 500s.
+
+## Future scope
+Milestones 6–10 (gateway hardening, candidate cache, CORS, audit log, Prometheus/ELK/Zipkin/Grafana, Dockerfiles, full
+compose, K8s, Testcontainers, e2e, Gatling, chaos), plus: an election entity with voting windows, a transactional
+outbox for `vote.cast`, a results recount from the voting DB, Flyway migrations, external anchoring of chain heads,
+unlinkable ballots, and a web UI.
+
+## References
+Spring Boot 3.3 and Spring Cloud 2023.0 reference docs · Spring Security 6 · Resilience4j 2 docs · Spring for Apache
+Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and `INSERT … ON CONFLICT`.
+
+---
+
+# Part 2 — Log (newest first)
+
+### 2026-10-11 — Batches 1–3: user-service finished, voting and result reviewed (no commits)
+- **user-service done:** the `GlobalExceptionHandler` now rethrows Spring Security exceptions (method-security
+  denials were becoming 500s) and logs unexpected errors. `admin.*` is mapped from the `ADMIN_*` env vars. **26/26 tests pass.**
+- **Incident found in review — Kafka outage failed committed votes:** `KafkaTemplate.send` blocks up to 60 s
+  for metadata and then throws inside the after-commit listener, so the voter got a 500 although the vote was saved.
+  **Fix:** `VoteEventProducer` catches send failures (sync and async) and logs them with the vote id; `max.block.ms`
+  lowered to 5 s. `vote.verified` is now keyed by vote id. Regression test `VoteEventProducerTest` (red before, green after).
+- Added the missing voting role tests (own vs other user's vote status, chain validation as voter). voting-service: **54/54**.
+- **Lesson:** rewriting whole files dropped existing Javadoc in user-, voting- and result-service. Restored it. Edit in place
+  rather than rewrite, and review `git diff` for removed comments before handing a batch over.
+- voting-service and result-service READMEs updated (endpoints and roles, schema with `election_chain_heads`, hash
+  formula, double-vote layers, outage behaviour, Redis keys, env vars). Removed a false claim that voting calls user-service.
+
+### 2026-10-10 — Full review, bug-fix pass, docs (no commits)
+**Review findings** (before fixes): user-service 15/15 green; candidate-service 41 tests with 1 failure + 5 errors;
+result-service 14 with 1 failure; voting, gateway and eureka had no tests. Twelve bugs found (memory file `voting-system-audit-2026-10`).
+
+**Fixed (test-first):**
+- *Incident — all votes rejected:* voting/result `JwtService` parsed the JWT subject (a username) as a UUID → every token
+  was rejected. **Cause:** contract drift. **Fix:** read the `userId` claim; new `JwtPrincipal(userId, username, role)`.
+- *Incident — invalid candidates accepted:* candidate `/validate` returns 200 with `valid:false`; voting's Feign method returned `void`.
+  **Fix:** typed `CandidateApiResponse<CandidateValidation>`, reject when not valid.
+- *Idempotent retry returned 409:* the replay check now runs first and is scoped per user; replay → 200 with the original receipt.
+- *Chain could fork:* added `election_chain_heads` with a pessimistic row lock. Chaining stays on by default (`VOTING_CHAIN_ENABLED`).
+  Chain validation now orders by `id` and skips link checks for unchained votes.
+- *Side effects before commit:* moved to `VoteCastSideEffects` (`AFTER_COMMIT`).
+- *Security exceptions → 500 / leaked messages:* rethrow security exceptions, JSON 401/403 entry points, generic 500 text.
+- *Result audit always empty:* wrong authority (`ADMIN`), invalid `/**/audit` pattern, JWT not forwarded, Page vs List mismatch.
+  **Fix:** `hasRole('ADMIN')`, Feign `Authorization` forwarding, `PageResponse` paging (500/page), 503 on failure.
+- *Tally double-count on redelivery:* atomic Lua de-dup by vote id. Names now come from all candidates, not only active ones.
+- *Candidate test suite red:* producer mock was missing; the test profile now disables Eureka and Kafka admin.
+- *Admin self-registration:* `role` removed from `RegisterRequest`; `AdminSeeder` from env vars; added `GET /users/{id}` and `/users/{id}/role`.
+  Finished 2026-10-11 (see that entry).
+
+**Decisions:**
+- Chaining kept ON (reverses PROJECT_PLAN decision #5) because the code already chained. Made safe with a per-election lock rather than turned off.
+- Resilience4j fallback placed on `@Retry` (outermost aspect) so retries happen before the fallback.
+- `VOTING_DB_URL` means the server base URL in **all** services (voting used it as the full URL before).
+- voting-service consumers ignore Kafka type headers (`spring.json.use.type.headers=false`) and wrap JSON in `ErrorHandlingDeserializer`.
+- `@EnableFeignClients` moved to `FeignConfig` so `@WebMvcTest` slices load without Feign.
+
+**Lessons:**
+- Write the cross-service contract down (JWT claims, validation response) and test both sides against it.
+- Test cross-cutting behaviour (security, resilience, transactions) through the real Spring proxy. Unit tests missed the Retry/CircuitBreaker ordering bug; the integration test caught it.
+
+**Environment notes:** result-service is not a registered submodule; it was cloned into `result-service/` (untracked).
+Docker and kubectl are not installed on the dev machine, so container and K8s work cannot be run locally yet.
+
+### 2026-05-29 — Result Service (Milestone 5)
+result-service created: Kafka `vote.cast` consumer, Redis counters, Feign enrichment, results/summary/SSE/audit endpoints. Root docs updated.
+
+### 2026-05 — Voting Service and Kafka (Milestones 3–4)
+Vote entity with hash and prev-hash, Redis double-vote and idempotency checks, DB unique constraint, Feign validation,
+`vote.cast` / `vote.verified` producers, `candidate.status-changed` consumer stub, Kafka + Zookeeper in docker-compose.
+
+### 2026-04/05 — Foundation and infrastructure (Milestones 1–2)
+candidate-service (CRUD, election queries, bulk, status, soft delete, seeder) and user-service (register/login, BCrypt, JWT).
+Eureka server, API gateway with JWT validation filter and Redis rate limiting.
