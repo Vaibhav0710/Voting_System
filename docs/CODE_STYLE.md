@@ -42,6 +42,8 @@ _Last updated: 2026-10-10. Conventions as used in the six services; follow the s
 - `@Slf4j`; placeholders (`log.info("… {}", id)`), never string concatenation.
 - `info` for business events, `warn` for degraded paths, `error` + exception for unexpected failures.
 - Never log secrets, tokens, passwords or a voter's candidate choice.
+- Security-relevant events go through the service's `AuditLogger` (`AUDIT` logger), never plain `log.info`:
+  `record(action, actor, target, outcome)` or `recordForCurrentUser(action, target, outcome)`. Actions are `UPPER_SNAKE_CASE`.
 
 **Comments**
 - Javadoc on every class (its responsibility), and on public methods when the *why* isn't obvious. No narration of what the code plainly does.
@@ -52,7 +54,8 @@ _Last updated: 2026-10-10. Conventions as used in the six services; follow the s
 
 ## YAML (application config)
 - Environment-specific values as `${ENV_VAR:default}`. Secrets get **no default**.
-- Test config in `src/test/resources/application-test.yml`, activated with `@ActiveProfiles("test")`.
+- Test config in `src/test/resources/application-test.yml`, activated with `@ActiveProfiles("test")`. Never name it
+  `application.yml`: that replaces the real config on the test classpath.
 
 ## Commits (when the owner commits)
 Conventional Commits: `feat: …`, `fix: …`, `docs: …`, `test: …`, `chore: …`, imperative mood, one service per commit (each is its own repo).

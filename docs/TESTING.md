@@ -16,15 +16,15 @@ No Kafka, Redis, Postgres or Eureka is needed: tests use H2, mock Redis-backed b
 `spring.kafka.listener.auto-startup=false` / `spring.kafka.admin.auto-create=false` and `eureka.client.enabled=false`.
 There is no single root build yet. The root `pom.xml` lists `result-service`, which a fresh clone lacks, so test each service on its own.
 
-## 3. Current results (2026-10-11, `mvn test`)
+## 3. Current results (2026-10-13, `mvn test`, 226 tests total)
 | Service | Tests | Result |
 |---|---|---|
-| user-service | 26 | 26 pass (was 15; added admin seeder, users API, role-ignored and 401 tests) |
-| candidate-service | 58 | 58 pass (was 41 with 1 failure + 5 errors) |
-| voting-service | 54 | 54 pass (had no tests before) |
-| result-service | 28 | 28 pass (was 1 failure) |
-| api-gateway | 0 | none yet (planned M7) |
-| eureka-server | 0 | config only |
+| user-service | 31 | 31 pass (was 15): admin seeder, users API, role ignored, 401s, audit, metrics, 404 |
+| candidate-service | 63 | 63 pass (was 41 with 1 failure + 5 errors) |
+| voting-service | 66 | 66 pass (had no tests before) |
+| result-service | 33 | 33 pass (was 14 with 1 failure) |
+| api-gateway | 30 | 30 pass (had none): filter, open-path rules, roles, token validation (MockWebServer), rate-limit key, CORS, fallback |
+| eureka-server | 3 | 3 pass (had none): registry API, metrics, readiness (real port; Jersey cannot run in MockMvc) |
 
 ## 4. Layout and kinds of test
 ```
@@ -75,4 +75,3 @@ Notable tests:
 - Gatling load test (10k concurrent votes, p95 < 500 ms) and a double-vote stress run.
 - Chaos test: stop candidate-service mid-load, check fallback and recovery.
 - JaCoCo with an 80 % line-coverage gate on voting-service.
-- api-gateway filter tests.

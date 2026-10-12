@@ -30,7 +30,7 @@ userservice_db candidate-  │  voting_service_db     │
 | Service | Owns | Talks to |
 |---|---|---|
 | **eureka-server** | Service registry (`@EnableEurekaServer`, does not self-register) | — |
-| **api-gateway** | Single entry point; routes `/api/v1/auth/**`, `/users/**`, `/candidates/**`, `/votes/**`, `/results/**`; `AuthenticationFilter` validates the bearer token through user-service and adds `loggedInUser`/`role` headers; `RequestRateLimiter` (Redis token bucket, key = user id, else client IP) | user-service, Redis |
+| **api-gateway** | Single entry point; routes `/api/v1/auth/**`, `/users/**`, `/candidates/**`, `/votes/**`, `/results/**`. `AuthenticationFilter` (all routes) strips client-sent identity headers, lets exact open endpoints through, verifies other tokens via user-service, applies coarse role rules and adds verified `loggedInUser`/`role` headers; `RequestRateLimiter` (Redis token bucket, key `user:<id>` or `ip:<addr>`); per-route circuit breakers with 503 JSON fallbacks; CORS from `CORS_ALLOWED_ORIGINS` | user-service, Redis |
 | **user-service** | Users, BCrypt passwords, JWT issuing and validation, admin bootstrap | Postgres |
 | **candidate-service** | Candidates (status, soft delete), validation endpoint (never cached), Redis read caches, after-commit `candidate.*` events, demo data seeder | Postgres, Redis, Kafka |
 | **voting-service** | Votes: idempotency, double-vote defence, hashing, chain, verification, counts, `vote.*` events, candidate status cache | Postgres, Redis, Kafka, candidate-service (Feign) |
@@ -76,7 +76,7 @@ Producers send plain JSON without Java type headers. Both producers send only af
 Java 17 (runs on JDK 21 locally) · Spring Boot 3.3.6 · Spring Cloud 2023.0.3 (Gateway, Netflix Eureka, OpenFeign,
 LoadBalancer) · Spring Security 6 + JJWT 0.12.6 · Spring Data JPA / Hibernate 6 · PostgreSQL (H2 in tests) ·
 Spring Kafka (Confluent cp-kafka 7.4.0 + Zookeeper in compose) · Redis (Lettuce) · Resilience4j 2.2.0 ·
-springdoc-openapi 2.5.0 · Lombok · Maven.
+springdoc-openapi 2.5.0 · Micrometer (Prometheus registry, Brave tracing → Zipkin) · logstash-logback-encoder 7.4 · Lombok · Maven.
 
 ## 6. Key decisions
 | # | Decision | Why | Rejected |
@@ -94,6 +94,7 @@ springdoc-openapi 2.5.0 · Lombok · Maven.
 ## 7. Known limits
 - No election entity: no voting window and no eligibility list.
 - `vote.cast` is published after commit but not transactionally (no outbox). A crash between commit and send loses the event for results (the voting DB still has the vote).
-- Gateway calls user-service for every authenticated request (extra hop). Its header-spoofing and `contains` path matching fixes are planned (M7).
+- Gateway calls user-service for every authenticated request (extra hop). Local JWT verification at the gateway would remove it.
+- A gateway timeout (5 s) on `POST /votes` returns 503 even if the vote was stored; clients must retry with the same idempotency key.
 - result-service Redis keys are not cluster hash-tagged (fine for single-node Redis).
 - Hibernate `ddl-auto=update` instead of versioned migrations.

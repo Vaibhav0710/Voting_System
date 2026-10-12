@@ -82,6 +82,52 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 
 # Part 2 — Log (newest first)
 
+### 2026-10-13 — Batch 6: observability and audit logging in all six services (no commits)
+- **Bug 12 fixed:** every service exposed `/actuator/prometheus` but none had the Prometheus registry, so it returned
+  404 (and 500 in user-service, see below). Added `micrometer-registry-prometheus`; metrics are tagged `application=<service>`.
+  Kubernetes health probes (`/actuator/health/liveness|readiness`) are on everywhere; eureka-server got actuator for the first time.
+- **Tracing:** Micrometer + Brave with a Zipkin reporter. Trace ids appear in every log line; Feign (`feign-micrometer`),
+  Kafka (`observation-enabled`) and the gateway's token check (observed `WebClient`) carry them across services.
+  Sampling defaults to 0.0 locally (nothing exported) and is set by `TRACING_SAMPLING` (compose 1.0, `prod` 0.1).
+- **Logs:** one shared `logback-spring.xml`: readable by default, JSON with `json-logs`, TCP to Logstash with `logstash`.
+  Checked by starting eureka with `json-logs` (one JSON object per line, `service` field). Dropped logback context fields from JSON.
+- **Audit (M7.7):** `AuditLogger` (`AUDIT` logger, key=value structured fields) in user (register, login success/failure),
+  candidate (create/update/status/delete; actor from the JWT), voting (every vote outcome, verify, chain validation) and
+  result (audit trail viewed). Ballot privacy holds: a vote's audit target is the vote or election, never the candidate (tested).
+- **Vote metric:** `VoteOutcomeRecorder` = the `votes.cast` counter (success, replay, duplicate, invalid_candidate,
+  candidate_service_unavailable, all registered at zero) + audit. Success is recorded after commit in `VoteCastSideEffects`.
+- **`prod` profile** in each service: JSON logs, Swagger off (services with springdoc), 10 % trace sampling.
+- **Incident — unknown URLs returned 500:** the generic `@ExceptionHandler(Exception.class)` caught Spring's
+  `NoResourceFoundException` (and 405/415 errors) and answered 500. **Fix:** exceptions implementing Spring's
+  `ErrorResponse` keep their own status (user, candidate, voting, result). One regression test per service.
+- **Incident — user-service tests ignored the real config:** its test file was `src/test/resources/application.yml`, which
+  replaces the main file on the test classpath. Renamed to `application-test.yml` with `@ActiveProfiles("test")`.
+  **Lesson:** use `mvn clean` after renaming resources, because stale copies in `target/` kept the old behaviour.
+- user-service config: `show-sql` off; Eureka URL from `EUREKA_URL`.
+- Tests: **226 total, all green** (eureka 3, gateway 30, user 31, candidate 63, voting 66, result 33).
+- **Not verified:** export to a real Zipkin and Logstash, and Prometheus scraping. Those servers arrive in batch 7.
+
+### 2026-10-12 — Batch 5: api-gateway hardening (no commits)
+- **Identity spoofing (bug 10):** clients could send their own `loggedInUser`/`role` headers. On the open results
+  route they were never touched and decided the rate-limit bucket. **Fix:** `AuthenticationFilter` now runs on all
+  four routes and always strips both headers, then sets them only from a token verified by user-service.
+  Rate-limit keys are `user:<id>` or `ip:<addr>`, so user and IP buckets cannot collide.
+- **Open-path matching:** `RouterValidator` used `path.contains(openPath)`, so `/api/v1/votes/x/api/v1/results` counted
+  as public. Now it uses exact (method, PathPattern) pairs; `/auth/validate` and `/eureka` are no longer open.
+- **Bad token reported as an outage:** any non-2xx from user-service (including 401) became "503 Authentication service
+  unavailable". The new `TokenValidator` maps 401/403 and unsuccessful bodies → 401, and only real failures → 503.
+- **Edge role checks** (`RoleAuthorizer`): `POST /votes` needs VOTER, candidate writes need ADMIN. Services keep
+  enforcing their own rules.
+- **Resilience (M6.3):** per-route reactive Resilience4j circuit breakers (50 % of 20 calls, 10 s open, 5 s timeout)
+  with `FallbackController` → 503 JSON. A timed-out vote may have been stored; idempotent retry returns the receipt.
+- **CORS (M7.4):** `globalcors` with origins from `CORS_ALLOWED_ORIGINS` (default `http://localhost:3000`).
+- All gateway errors are now JSON `ApiResponse` (the old filter sent empty bodies).
+- **Tests: 28 (had none):** filter (spoof stripping, 401/403/503), router rules (including the embedded-path case
+  that failed with `contains`), roles, `TokenValidator` against MockWebServer, rate-limit key, and a full-context test for
+  CORS preflight (allowed 200 / unknown origin 403), 401 JSON and the fallback.
+- **Not verified:** real routing to running services through Eureka, real Redis rate limiting, and a circuit breaker
+  opening under real failures. These need the full stack (batches 7–8).
+
 ### 2026-10-11 — Batch 4: candidate-service caching, events and hardening (no commits)
 - **Incident (pushed state):** batches 1–3 were committed on a detached HEAD inside the user- and voting-service
   submodules, and the root repo was pushed pointing at commits that GitHub did not have. **Fix:** fast-forwarded

@@ -53,7 +53,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 | F10 | Vote counts per candidate (public) | built |
 | F11 | `vote.cast` / `vote.verified` / `candidate.*` Kafka events | built |
 | F12 | Results, summary, live SSE (public); audit trail (admin) | built |
-| F13 | Gateway: routing, JWT validation, per-user Redis rate limiting | built; hardening planned (M7) |
+| F13 | Gateway: routing, JWT validation, spoof-proof per-user rate limiting, edge role checks, circuit breakers, CORS | built |
 | F14 | Candidate search endpoint (`/candidates/search`) from the original plan | not built |
 
 ## 6. Non-functional requirements
@@ -62,7 +62,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 - **Availability:** retry, circuit breaker and bulkhead on Candidate Service calls; a cached status lets voting continue for known ACTIVE candidates.
 - **Performance target (M10):** 10,000 concurrent votes with p95 < 500 ms through the gateway (not yet measured).
 - **Security:** see `SECURITY.md`. No secrets in the repo; 500s never leak internals.
-- **Observability (M8):** Prometheus metrics, JSON logs to ELK, distributed tracing (planned).
+- **Observability (M8):** Prometheus metrics, trace ids in logs, Zipkin tracing, JSON logs and an AUDIT log in every service (done); ELK, Prometheus, Grafana and Zipkin servers come with docker-compose (batch 7).
 - **Operability (M9):** one-command `docker compose up`, Kubernetes manifests (planned).
 
 ## 7. Success measures
@@ -76,9 +76,9 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 |---|---|---|
 | M1–M5 | Candidate, user, Eureka, gateway, voting, Kafka, result services | done |
 | Fix pass | 12 review bugs (JWT parsing, candidate validation, admin self-registration, idempotency, chain race, audit, …) | done except user-service tests |
-| M6 | Resilience4j + caching | done in voting, result, candidate; gateway circuit breakers planned (batch 5) |
-| M7 | Security hardening (gateway header spoofing, CORS, audit log) | planned |
-| M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | planned |
+| M6 | Resilience4j + caching | done (voting, result, candidate, gateway) |
+| M7 | Security hardening | done (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
+| M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | service side done (metrics, tracing, JSON logs, audit, probes); servers and dashboards in batch 7 |
 | M9 | Dockerfiles, full compose, profiles, K8s | planned |
 | M10 | Coverage, Testcontainers, e2e, Gatling, chaos | partly done (concurrency tests) |
 

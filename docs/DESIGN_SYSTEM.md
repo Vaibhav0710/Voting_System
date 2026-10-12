@@ -34,6 +34,7 @@ Every JSON response (success or error) uses `ApiResponse`:
 | 409 | duplicate (already voted, name taken) | `"User has already voted in this election."` |
 | 429 | gateway rate limit | (empty body) |
 | 503 | dependency down and no safe fallback | `"Candidate Service is unavailable and candidate status is unknown. Please retry shortly."` |
+| 503 | gateway circuit breaker open, timeout (5 s) or no instance | `"voting-service is temporarily unavailable. Please retry shortly."` |
 | 500 | anything unexpected | `"An unexpected error occurred."` (details only in logs) |
 
 Status codes for voting: **201** new vote, **200** idempotent replay (`data.replay = true`).
@@ -49,10 +50,21 @@ with UUID ids and ISO timestamps. New fields may be added; consumers ignore unkn
 Full list in `ARCHITECTURE.md` §4.
 
 ## 6. Logs and metrics
-- Current: Spring Boot default console pattern, SLF4J via Lombok `@Slf4j`. Log ids, not personal data.
-  Use `warn` for degraded paths (fallbacks, Redis misses) and `error` with the stack trace only for unexpected failures.
-- Planned (M8): JSON logs (logstash-logback-encoder) with `traceId`/`spanId`, a dedicated `AUDIT` logger
-  (`action`, `actor`, `target`, `outcome`), and metrics named `votes.cast.total{outcome=success|duplicate|invalid}`.
+- SLF4J via Lombok `@Slf4j`. Log ids, not personal data. Use `warn` for degraded paths (fallbacks, Redis misses) and
+  `error` with the stack trace only for unexpected failures.
+- **Format** (`logback-spring.xml`, the same in every service): readable console by default, with
+  `[service,traceId,spanId]`. The `json-logs` profile (on in `prod`) prints one JSON object per line:
+  `@timestamp, @version, message, logger_name, thread_name, level, level_value, service`, plus structured fields.
+  The `logstash` profile also ships the same JSON over TCP to `LOGSTASH_HOST:LOGSTASH_PORT`.
+- **Audit:** logger `AUDIT`, message `action=… actor=… target=… outcome=…`; with JSON logs these are separate fields.
+  Actions: `USER_REGISTERED`, `LOGIN` (SUCCESS/FAILURE), `CANDIDATE_CREATED|UPDATED|STATUS_CHANGED|DELETED`,
+  `VOTE_CAST` (SUCCESS, REPLAY, DUPLICATE, INVALID_CANDIDATE, CANDIDATE_SERVICE_UNAVAILABLE), `VOTE_VERIFIED`
+  (VALID/TAMPERED), `CHAIN_VALIDATED` (VALID/BROKEN), `AUDIT_TRAIL_VIEWED`. Actor is `user:<id>`, `anonymous` or a
+  username (registration and login). Targets are `user:`, `candidate:`, `vote:` or `election:` ids; a vote's target is
+  never its candidate.
+- **Metrics:** `/actuator/prometheus` in every service, tagged `application=<service>`. Business metric:
+  `votes_cast_total{outcome="success|replay|duplicate|invalid_candidate|candidate_service_unavailable"}`
+  (voting-service). Gateway and Resilience4j metrics come from their own Micrometer integrations.
 
 ## 7. Direction for a future UI
 Not started. If one is built: show the receipt hash prominently with a copy button and a "verify my vote" action;

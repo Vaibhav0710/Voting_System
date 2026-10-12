@@ -60,7 +60,7 @@ _Last updated: 2026-10-10_
 | 8761 | Eureka dashboard | no |
 | 5432 / 6379 / 9092 / 2181 | Postgres / Redis / Kafka / Zookeeper | no |
 
-Actuator: only `health`, `info`, `prometheus` are exposed (unauthenticated), so keep them internal. Swagger UI is enabled
+Actuator: only `health`, `info`, `prometheus` are exposed (unauthenticated, read-only, no secrets), so keep them internal; on the gateway (8080) they are on the public port, so block `/actuator/**` at the ingress in production. Swagger UI is enabled
 (planned: off in the `prod` profile). Kafka and Redis run without auth or TLS: local and dev only.
 
 ## 7. Threats and mitigations
@@ -73,12 +73,13 @@ Actuator: only `health`, `info`, `prometheus` are exposed (unauthenticated), so 
 | Information leak in 500s | generic message, details only in logs | done in voting/result; user already OK |
 | Kafka redelivery inflating results | Lua de-dup by vote id | done |
 | Poison Kafka messages | `ErrorHandlingDeserializer` | done (voting, result) |
-| Client spoofing `loggedInUser`/`role` headers to dodge rate limits | strip inbound headers at the gateway | **planned (M7)** |
-| Gateway open-path match uses `contains` | prefix matching | **planned (M7)** |
+| Client spoofing `loggedInUser`/`role` headers to dodge rate limits | gateway strips them on every route and sets them only from a verified token | done |
+| Gateway open-path match used `contains` | exact method + path patterns (`RouterValidator`) | done |
 | Brute-force login | gateway rate limit (10/s, burst 20 on auth routes) | partial |
 | Oversized input (huge names, giant bulk requests) | `@Size` limits: names/parties ≤ 100, bulk ≤ 500, passwords 8–72 | done (candidate, user) |
 | Malicious data in the Redis cache | typed JSON serializers per cache, no Java type info (no polymorphic deserialization) | done (candidate) |
-| CORS | gateway `globalcors` with allowed origins from env | **planned (M7)** |
+| CORS | gateway `globalcors` with allowed origins from `CORS_ALLOWED_ORIGINS` | done |
+| Invalid token reported as outage (503) | `TokenValidator` maps 401/403 to 401, only real failures to 503 | done |
 
 ## 8. Hard rules
 - Never commit secrets or `.env` files. Never put real secrets in test configs.
