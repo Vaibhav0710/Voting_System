@@ -1,0 +1,16 @@
+# Scrapes every service's Micrometer endpoint inside the compose network.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: voting-system
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - eureka-server:8761
+          - api-gateway:8080
+          - user-service:8081
+          - candidate-service:8082
+          - voting-service:8083
+          - result-service:8084

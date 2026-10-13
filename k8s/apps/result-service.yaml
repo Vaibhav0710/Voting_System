@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: result-service
+spec:
+  selector: { app: result-service }
+  ports:
+    - port: 8084
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: result-service }
+  template:
+    metadata:
+      labels: { app: result-service }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8084"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+      containers:
+        - name: result-service
+          image: voting/result-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: voting-config }
+            - secretRef: { name: voting-secrets }
+          ports:
+            - containerPort: 8084
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8084 }
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8084 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8084 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}

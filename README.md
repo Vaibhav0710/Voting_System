@@ -3,7 +3,7 @@
 > A production-grade, tamper-resistant, scalable online voting platform built with **microservices architecture**, powered by **Java + Spring Boot**, and designed to handle **millions of concurrent users**.
 
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.6-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
 [![Kafka](https://img.shields.io/badge/Apache%20Kafka-3.x-red.svg)](https://kafka.apache.org/)
 [![Redis](https://img.shields.io/badge/Redis-7.x-red.svg)](https://redis.io/)
@@ -53,7 +53,7 @@ An election voting platform where:
 
 | Service | Responsibility | Port | Database |
 |---------|---------------|------|----------|
-| **User Service** | Auth, JWT, roles | 8081 | `user_service_db` |
+| **User Service** | Auth, JWT, roles | 8081 | `userservice_db` |
 | **Candidate Service** | Candidate CRUD, status, validation | 8082 | `candidateservice_db` |
 | **Voting Service** | Vote casting, hashing, double-vote prevention | 8083 | `voting_service_db` |
 | **Result Service** | Real-time aggregation (Kafka consumer) | 8084 | None (stateless) |
@@ -67,7 +67,7 @@ An election voting platform where:
 | Layer | Technology |
 |-------|-----------|
 | Language | Java 17 |
-| Framework | Spring Boot 3.3.x |
+| Framework | Spring Boot 3.3.6 |
 | Security | Spring Security + JWT |
 | Databases | PostgreSQL (1 per service) |
 | Service Discovery | Netflix Eureka |
@@ -102,37 +102,46 @@ Each service has its own GitHub repository for independent CI/CD:
 ## 🚀 Quick Start (Full System)
 
 ### Prerequisites
-- Java 17+
-- Maven 3.8+
-- Docker & Docker Compose
-- PostgreSQL 14+
+- Docker with Docker Compose v2 (builds every service; no local Java needed)
+- For development without Docker: Java 17+, Maven 3.9, and your own Postgres 16, Redis 7 and Kafka
 
-### Run All Services
+### Run the whole system
 
 ```bash
-# 1. Clone all repos
-git clone https://github.com/Vaibhav0710/Voting_Eureka_Server.git
-git clone https://github.com/Vaibhav0710/Voting_User_Service.git
-git clone https://github.com/Vaibhav0710/Voting_Candidate_Service.git
-git clone https://github.com/Vaibhav0710/Voting_Api-Gateway.git
-git clone https://github.com/Vaibhav0710/Voting_Voting_Service.git
-git clone https://github.com/Vaibhav0710/Voting_Result_Service.git
+# 1. Clone with all six services (each is its own repo, checked out as a submodule)
+git clone --recurse-submodules https://github.com/Vaibhav0710/Voting_System.git
+cd Voting_System
 
-# 2. Start infrastructure (Kafka, Redis, PostgreSQL)
-docker-compose up -d
+# 2. Configure secrets (.env is git-ignored); fill in JWT_SECRET, passwords
+cp .env.example .env
 
-# 3. Start services IN ORDER
-cd Voting_Eureka_Server     && mvn spring-boot:run &
-cd Voting_User_Service      && mvn spring-boot:run &
-cd Voting_Candidate_Service && mvn spring-boot:run &
-cd Voting_Voting_Service    && mvn spring-boot:run &
-cd Voting_Result_Service    && mvn spring-boot:run &
-cd Voting_Api-Gateway       && mvn spring-boot:run &
+# 3. Build and start Postgres, Redis, Kafka, Eureka and the five services (start order is handled by health checks)
+docker compose up -d --build
+
+# Optional: also start ELK, Prometheus, Grafana and Zipkin
+#   set SPRING_PROFILES_ACTIVE=json-logs,logstash and TRACING_SAMPLING=1.0 in .env, then:
+docker compose --profile observability up -d --build
 
 # 4. Verify
-curl http://localhost:8761         # Eureka dashboard
-curl http://localhost:8080/actuator/health  # Gateway health
+curl http://localhost:8080/api/v1/candidates   # through the gateway (the only public port)
+open http://localhost:8761                     # Eureka dashboard (bound to 127.0.0.1)
 ```
+
+| UI (observability profile) | URL |
+|---|---|
+| Grafana (dashboard "Voting System — Overview") | http://localhost:3000 (admin / `GRAFANA_ADMIN_PASSWORD`) |
+| Prometheus | http://localhost:9090 |
+| Kibana (index `voting-logs-*`) | http://localhost:5601 |
+| Zipkin | http://localhost:9411 |
+
+### Kubernetes
+
+```bash
+cp k8s/secrets.env.example k8s/secrets.env    # fill in; git-ignored
+kubectl apply -k k8s/                          # namespace "voting"; the ingress exposes only /api
+```
+The manifests use the images compose builds (`voting/<service>:1.0.0`): load them into the cluster
+(`kind load docker-image …`, `minikube image load …`) or push them to a registry.
 
 ---
 
@@ -165,10 +174,10 @@ curl http://localhost:8080/actuator/health  # Gateway health
 | 3 | **Voting Service** — Core vote casting | Weeks 5–6 | ✅ Complete |
 | 4 | **Event-Driven** — Kafka integration | Week 7 | ✅ Complete |
 | 5 | **Result Service** — Real-time aggregation | Week 8 | ✅ Complete |
-| 6 | **Resilience** — Caching + Circuit breakers | Week 9 | 🔜 |
-| 7 | **Security** — Hardening all endpoints | Week 10 | 🔜 |
-| 8 | **Observability** — ELK + Prometheus + Grafana | Week 11 | 🔜 |
-| 9 | **Containerization** — Docker Compose + K8s | Week 12 | 🔜 |
+| 6 | **Resilience** — Caching + Circuit breakers | Week 9 | ✅ Complete |
+| 7 | **Security** — Hardening all endpoints | Week 10 | ✅ Complete |
+| 8 | **Observability** — ELK + Prometheus + Grafana | Week 11 | ✅ Complete (servers not yet run) |
+| 9 | **Containerization** — Docker Compose + K8s | Week 12 | ✅ Written (not yet run: no Docker on the dev machine) |
 | 10 | **Testing** — Load testing + Chaos testing | Week 13 | 🔜 |
 
 > 📖 **Detailed breakdown:** [PROJECT_PLAN.md](PROJECT_PLAN.md)
@@ -216,4 +225,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 > **Maintainer:** Vaibhav  
-> **Last Updated:** May 29, 2026
+> **Last Updated:** October 14, 2026

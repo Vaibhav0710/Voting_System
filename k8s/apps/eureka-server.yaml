@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka-server
+spec:
+  selector: { app: eureka-server }
+  ports:
+    - port: 8761
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: eureka-server }
+  template:
+    metadata:
+      labels: { app: eureka-server }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8761"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+      containers:
+        - name: eureka-server
+          image: voting/eureka-server:1.0.0
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: voting-config }
+            - secretRef: { name: voting-secrets }
+          ports:
+            - containerPort: 8761
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8761 }
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8761 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8761 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { memory: 384Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}

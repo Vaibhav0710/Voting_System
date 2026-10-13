@@ -38,3 +38,6 @@ application-local.yml
 
 # ─── Docker ───────────────────────────────────────────────────────
 docker-compose.override.yml
+
+# Kubernetes secrets (copy from k8s/secrets.env.example)
+k8s/secrets.env

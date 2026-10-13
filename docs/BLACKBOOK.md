@@ -69,8 +69,8 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 - Spring Security exceptions caught by a generic `@ExceptionHandler(Exception)` became 500s.
 
 ## Future scope
-Milestones 6–10 (gateway hardening, candidate cache, CORS, audit log, Prometheus/ELK/Zipkin/Grafana, Dockerfiles, full
-compose, K8s, Testcontainers, e2e, Gatling, chaos), plus: an election entity with voting windows, a transactional
+Milestones 6–9 are done in code (M9 still has to be run under Docker and on a cluster). Left: M10 (JaCoCo, Testcontainers,
+e2e, Gatling, chaos), plus: an election entity with voting windows, a transactional
 outbox for `vote.cast`, a results recount from the voting DB, Flyway migrations, external anchoring of chain heads,
 unlinkable ballots, and a web UI.
 
@@ -81,6 +81,29 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 ---
 
 # Part 2 — Log (newest first)
+
+### 2026-10-14 — Batch 7: Dockerfiles, full docker-compose, Kubernetes (no commits)
+- **Dockerfile + `.dockerignore` in all six services:** multi-stage (maven:3.9.9-eclipse-temurin-17 →
+  eclipse-temurin:17.0.13_11-jre-alpine), dependencies cached in their own layer, non-root UID 1001,
+  `HEALTHCHECK` on `/actuator/health/readiness`, `exec java` so the JVM gets signals.
+- **docker-compose.yml rewritten:** Postgres 16.4 (three DBs via `infra/postgres/init.sql`), Redis 7.4, Zookeeper/Kafka
+  7.4.0, Eureka, the five services and the gateway, started in order by health checks. Only the gateway is public;
+  infra and UIs bind to `127.0.0.1`. Read-only containers, `no-new-privileges`. Secrets from `.env` (`.env.example`
+  committed; required vars fail fast).
+- **Observability profile:** ELK 8.15.3 (Logstash TCP 5000 → index `voting-logs-*`), Prometheus 2.54.1 scraping all six
+  services, Grafana 11.2.2 with a provisioned datasource and the "Voting System — Overview" dashboard (requests, latency,
+  5xx, votes by outcome, open circuit breakers), Zipkin 3.4.
+- **Kubernetes (`k8s/`, Kustomize):** namespace `voting`, ConfigMap, Secret generated from `k8s/secrets.env`
+  (git-ignored), Postgres StatefulSet, Redis, Zookeeper/Kafka, a Deployment + Service per app with startup/readiness/
+  liveness probes and a restricted security context, nginx Ingress for `/api` only. Gateway and voting run 2 replicas.
+- **Gotcha avoided:** a K8s Service named `kafka` injects `KAFKA_PORT=tcp://…` into pods, which the cp-kafka image
+  reads as its own config and fails. `enableServiceLinks: false` on the Kafka and Zookeeper pods.
+- **Verified:** every service builds with `mvn clean package -DskipTests` (one jar each); an offline validator parsed all
+  30 YAML/JSON documents and cross-checked compose dependencies, Dockerfiles, required env vars, mounts, kustomize
+  resources and secret keys (a negative run caught the injected faults).
+- **Not verified:** no image was built and nothing was started. `docker compose up`, `kubectl apply -k`, Prometheus
+  scraping, log shipping and Zipkin export are all still untested. Docker Desktop is needed first.
+- README Quick Start rewritten for compose and K8s; Spring Boot badge corrected to 3.3.6.
 
 ### 2026-10-13 — Batch 6: observability and audit logging in all six services (no commits)
 - **Bug 12 fixed:** every service exposed `/actuator/prometheus` but none had the Prometheus registry, so it returned

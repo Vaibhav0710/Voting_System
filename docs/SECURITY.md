@@ -60,8 +60,18 @@ _Last updated: 2026-10-10_
 | 8761 | Eureka dashboard | no |
 | 5432 / 6379 / 9092 / 2181 | Postgres / Redis / Kafka / Zookeeper | no |
 
-Actuator: only `health`, `info`, `prometheus` are exposed (unauthenticated, read-only, no secrets), so keep them internal; on the gateway (8080) they are on the public port, so block `/actuator/**` at the ingress in production. Swagger UI is enabled
-(planned: off in the `prod` profile). Kafka and Redis run without auth or TLS: local and dev only.
+Actuator: only `health`, `info`, `prometheus` are exposed (unauthenticated, read-only, no secrets), so keep them internal; on the gateway (8080) they are on the public port, so block `/actuator/**` at the ingress in production. Swagger UI is
+off in the `prod` profile. Kafka and Redis run without auth or TLS: local and dev only.
+
+How the deployment files enforce this:
+- **docker compose:** only the gateway publishes `8080:8080` on all interfaces. user/candidate/voting/result publish no
+  ports at all; Eureka, Postgres, Redis, Kafka and the observability UIs are bound to `127.0.0.1` (dev machine only). Elasticsearch runs with
+  `xpack.security` off: local use only, never expose it.
+- **Kubernetes:** all Services are `ClusterIP`; the Ingress routes only `/api` to the gateway, so `/actuator/**` is not public.
+- **Containers:** non-root user (UID 1001), read-only root filesystem with a `/tmp` tmpfs/emptyDir, `no-new-privileges`
+  (compose) and `capabilities: drop [ALL]` (K8s).
+- **Secrets:** compose reads them from `.env` (git-ignored; `${VAR:?}` makes start-up fail if one is missing); K8s builds
+  the `voting-secrets` Secret from `k8s/secrets.env` (git-ignored). Only the `*.example` files are committed.
 
 ## 7. Threats and mitigations
 | Threat | Mitigation | Status |

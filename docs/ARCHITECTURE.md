@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-10-10. Describes the code as it is; planned items are marked._
+_Last updated: 2026-10-14. Describes the code as it is; planned items are marked._
 
 ## 1. Overview
 ```
@@ -91,10 +91,28 @@ springdoc-openapi 2.5.0 · Micrometer (Prometheus registry, Brave tracing → Zi
 | 8 | Fallback to cached candidate status, else 503 | Availability without accepting votes for unknown candidates | Fail open |
 | 9 | Admin only via env-configured bootstrap | Public registration must not grant privileges | Role field in registration |
 
-## 7. Known limits
+## 7. Deployment (written 2026-10-14, not yet run)
+| | docker compose (`docker-compose.yml`) | Kubernetes (`k8s/`, Kustomize) |
+|---|---|---|
+| Images | Multi-stage `Dockerfile` per service (Maven 3.9.9 build → Temurin 17 JRE Alpine, UID 1001, `HEALTHCHECK` on `/actuator/health/readiness`) | Same images, tagged `voting/<service>:1.0.0` |
+| Infra | postgres:16.4 (three DBs from `infra/postgres/init.sql`), redis:7.4, cp-zookeeper/cp-kafka 7.4.0 | StatefulSet Postgres (2Gi PVC), Redis, Zookeeper + Kafka Deployments |
+| Start order | `depends_on: condition: service_healthy` (infra → eureka → services → gateway) | startup/readiness/liveness probes; pods retry until dependencies are up |
+| Config | `.env` (required vars fail fast with `${VAR:?}`) | ConfigMap `voting-config` + Secret `voting-secrets` from `k8s/secrets.env` |
+| Exposure | Gateway `8080` public; everything else internal or `127.0.0.1` | `ClusterIP` Services; nginx Ingress routes only `/api` to the gateway |
+| Replicas | 1 each | gateway and voting 2, others 1 |
+| Observability | `--profile observability`: Elasticsearch/Logstash/Kibana 8.15.3, Prometheus 2.54.1 (scrapes `/actuator/prometheus`), Grafana 11.2.2 (provisioned "Voting System — Overview" dashboard), Zipkin 3.4 | not included (use a cluster monitoring stack) |
+
+Hardening in both: read-only root filesystem with a writable `/tmp`, no privilege escalation, JVM sized by
+`-XX:MaxRAMPercentage=75`. Services find each other through Eureka using container IPs (`EUREKA_INSTANCE_PREFERIPADDRESS`).
+
+## 8. Known limits
 - No election entity: no voting window and no eligibility list.
 - `vote.cast` is published after commit but not transactionally (no outbox). A crash between commit and send loses the event for results (the voting DB still has the vote).
 - Gateway calls user-service for every authenticated request (extra hop). Local JWT verification at the gateway would remove it.
 - A gateway timeout (5 s) on `POST /votes` returns 503 even if the vote was stored; clients must retry with the same idempotency key.
 - result-service Redis keys are not cluster hash-tagged (fine for single-node Redis).
 - Hibernate `ddl-auto=update` instead of versioned migrations.
+- Deployment files are not yet run (no Docker or kubectl on the dev machine). In K8s, Postgres, Redis, Zookeeper and
+  Kafka are single replicas (Redis and Kafka without persistent volumes): fine for a demo cluster, not for production.
+- Two voting-service pods share one Postgres; the per-election chain lock keeps the chain correct, but chain writes for
+  one election are serialised.

@@ -63,7 +63,9 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 - **Performance target (M10):** 10,000 concurrent votes with p95 < 500 ms through the gateway (not yet measured).
 - **Security:** see `SECURITY.md`. No secrets in the repo; 500s never leak internals.
 - **Observability (M8):** Prometheus metrics, trace ids in logs, Zipkin tracing, JSON logs and an AUDIT log in every service (done); ELK, Prometheus, Grafana and Zipkin servers come with docker-compose (batch 7).
-- **Operability (M9):** one-command `docker compose up`, Kubernetes manifests (planned).
+- **Operability (M9):** one-command `docker compose up` (Dockerfile per service, full compose with health-ordered
+  start-up and an `observability` profile) and Kustomize manifests for Kubernetes. Written and checked offline; not yet run
+  (no Docker or kubectl on the dev machine).
 
 ## 7. Success measures
 - 0 double votes in the concurrency stress test (met: 50/50 concurrent attempts → 1 stored).
@@ -78,8 +80,8 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 | Fix pass | 12 review bugs (JWT parsing, candidate validation, admin self-registration, idempotency, chain race, audit, …) | done except user-service tests |
 | M6 | Resilience4j + caching | done (voting, result, candidate, gateway) |
 | M7 | Security hardening | done (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
-| M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | service side done (metrics, tracing, JSON logs, audit, probes); servers and dashboards in batch 7 |
-| M9 | Dockerfiles, full compose, profiles, K8s | planned |
+| M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | done in code (metrics, tracing, JSON logs, audit, probes; servers, scrape config and a Grafana dashboard in compose); not yet run end to end |
+| M9 | Dockerfiles, full compose, profiles, K8s | written and validated offline (images build path, YAML, references); not yet run |
 | M10 | Coverage, Testcontainers, e2e, Gatling, chaos | partly done (concurrency tests) |
 
 ## 9. Open questions

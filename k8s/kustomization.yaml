@@ -1,0 +1,28 @@
+# Apply with:  cp k8s/secrets.env.example k8s/secrets.env  (fill in)  &&  kubectl apply -k k8s/
+# Images are the ones docker compose builds (voting/<service>:1.0.0); load them into the cluster
+# (e.g. `kind load docker-image …` or `minikube image load …`) or push them to a registry and change the names.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: voting
+
+resources:
+  - namespace.yaml
+  - config.yaml
+  - infra/postgres.yaml
+  - infra/redis.yaml
+  - infra/kafka.yaml
+  - apps/eureka-server.yaml
+  - apps/user-service.yaml
+  - apps/candidate-service.yaml
+  - apps/voting-service.yaml
+  - apps/result-service.yaml
+  - apps/api-gateway.yaml
+  - ingress.yaml
+
+secretGenerator:
+  - name: voting-secrets
+    envs:
+      - secrets.env
+
+generatorOptions:
+  disableNameSuffixHash: true

@@ -69,7 +69,20 @@ Notable tests:
 - No placeholder tests (an empty `contextPlaceholder()` test was removed from result-service).
 - Prefer a real Spring proxy test for cross-cutting behaviour (security, resilience, transactions).
 
-## 9. Not yet covered (planned, M10)
+## 9. Deployment files (compose, K8s)
+Docker and kubectl are not installed on the dev machine, so the containers and manifests have **not been run**. What was
+checked offline (2026-10-14):
+- `mvn -B -q clean package -DskipTests` in each service produces exactly one jar (what the Dockerfile copies).
+- A throwaway validator (SnakeYAML + Jackson, kept outside the repo) parsed every YAML/JSON file under `docker-compose.yml`,
+  `k8s/` and `observability/` (30 documents) and checked: `depends_on` targets exist, every built service has a Dockerfile,
+  every `${VAR:?}` is in `.env.example`, mounted paths exist, kustomization resources exist, and every `secretKeyRef` key
+  is in `k8s/secrets.env.example`. A negative run (a key and a file removed) reported both problems.
+
+To run it for real once Docker is available: `docker compose config -q`, `docker compose up -d --build`, wait for
+`docker compose ps` to show every service healthy, then the e2e script (M10). For K8s: `kubectl kustomize k8s/` and
+`kubectl apply -k k8s/` on kind or minikube.
+
+## 10. Not yet covered (planned, M10)
 - Testcontainers Postgres tests (`@Testcontainers(disabledWithoutDocker = true)`; Docker is not installed on the dev machine).
 - End-to-end script through the gateway (register → vote → replay → verify → results → audit).
 - Gatling load test (10k concurrent votes, p95 < 500 ms) and a double-vote stress run.

@@ -22,7 +22,9 @@ Connection comes only from env vars (no credentials in the repo):
 | voting-service | `voting_service_db` | public |
 | result-service, api-gateway, eureka | none | — |
 
-Create the three databases once (`CREATE DATABASE userservice_db;` and so on). Hibernate creates the tables.
+The three databases are created on the first start of an empty Postgres volume by `infra/postgres/init.sql`
+(docker compose) or the `postgres-init` ConfigMap (`k8s/infra/postgres.yaml`). For a Postgres you run yourself, run
+`CREATE DATABASE userservice_db;` and so on once. Hibernate creates the tables.
 
 ## 2. Tables
 
