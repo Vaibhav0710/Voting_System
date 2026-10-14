@@ -82,7 +82,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 | M7 | Security hardening | done (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
 | M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | done in code (metrics, tracing, JSON logs, audit, probes; servers, scrape config and a Grafana dashboard in compose); not yet run end to end |
 | M9 | Dockerfiles, full compose, profiles, K8s | written and validated offline (images build path, YAML, references); not yet run |
-| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | partly done (concurrency tests) |
+| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | coverage done (all apps ≥ 80 % except eureka's `main`); IT, e2e, load and chaos written, not yet run |
 
 ## 9. Open questions
 - Should elections become a first-class entity (open/close times, eligible voters)?

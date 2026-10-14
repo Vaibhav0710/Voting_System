@@ -680,12 +680,12 @@ github.com/Vaibhav0710/
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 10.1 | Unit tests for all services (80%+ coverage) | All services | 🔜 |
-| 10.2 | Integration tests (Testcontainers + PostgreSQL) | All services | 🔜 |
-| 10.3 | End-to-end test (register → vote → verify → results) | All services | 🔜 |
-| 10.4 | Load testing with Gatling / JMeter (10K concurrent votes) | Voting Service | 🔜 |
-| 10.5 | Chaos testing — kill a service, observe recovery | All services | 🔜 |
-| 10.6 | Double-vote stress test (race condition verification) | Voting Service | 🔜 |
+| 10.1 | Unit tests for all services (80%+ coverage) | All services | ✅ 82–96 % (eureka: only `main`); 80 % gate on voting |
+| 10.2 | Integration tests (Testcontainers + PostgreSQL) | Voting Service | 🟡 written, needs Docker |
+| 10.3 | End-to-end test (register → vote → verify → results) | All services | 🟡 `scripts/e2e.sh`, not yet run |
+| 10.4 | Load testing with Gatling / JMeter (10K concurrent votes) | Voting Service | 🟡 `load-tests/`, not yet run |
+| 10.5 | Chaos testing — kill a service, observe recovery | All services | 🟡 `scripts/chaos.sh`, not yet run |
+| 10.6 | Double-vote stress test (race condition verification) | Voting Service | 🟡 service level ✅ (50 threads); Gatling run pending |
 
 ---
 

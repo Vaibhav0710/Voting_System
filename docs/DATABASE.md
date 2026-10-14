@@ -1,6 +1,6 @@
 # Database
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-15_
 
 ## 1. Engines and connection
 - **PostgreSQL** (README targets 16; any 14+ works), one database per service on one server. Services never read
@@ -25,6 +25,24 @@ Connection comes only from env vars (no credentials in the repo):
 The three databases are created on the first start of an empty Postgres volume by `infra/postgres/init.sql`
 (docker compose) or the `postgres-init` ConfigMap (`k8s/infra/postgres.yaml`). For a Postgres you run yourself, run
 `CREATE DATABASE userservice_db;` and so on once. Hibernate creates the tables.
+
+**Local run without Docker (current dev machine, 2026-10-15).** The local PostgreSQL 18.6 Windows service is shared
+with the Job project, and only its non-admin login `jobagent_app` is available, which cannot create databases. So the
+three services live as **schemas in the `jobagent` database** instead of three databases:
+
+| Service | Local database | Local schema |
+|---|---|---|
+| user-service | `jobagent` | `userservice` |
+| candidate-service | `jobagent` | `candidateservice` |
+| voting-service | `jobagent` | `votingservice` |
+
+`scripts/create-local-schemas.sh` sets this up (safe to re-run): it creates the schemas as `jobagent_app`, then
+starts each service once with `--spring.datasource.url=<VOTING_DB_URL>/jobagent` and
+`--spring.datasource.hikari.schema=<schema>`, so Hibernate creates the tables exactly as in production and the seeders
+run (1 admin, 10 sample candidates). Settings come from `.env` (`VOTING_DB_USER/PASSWORD` = the Job credentials,
+`LOCAL_DB_NAME=jobagent`). The service config files are unchanged; Docker and K8s still use one database per service.
+The Job app's Flyway manages only the `jobagent` schema, so it never touches these. Run any local service the same way
+(the same two overrides), or it will look for `userservice_db` and fail.
 
 ## 2. Tables
 

@@ -59,7 +59,8 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 | Concurrency: 50 parallel voters, one election | chain valid, 50 votes, 0 broken links |
 | Retry + fallback wiring | 3 attempts on 503, then cached-status decision (integration test) |
 | Test suites (2026-10-11) | user 26/26, candidate 58/58, voting 54/54, result 28/28 |
-| Load test (p95 at 10k concurrent votes) | not yet measured (M10) |
+| Line coverage (2026-10-14, JaCoCo) | voting 89.6 % (gate 80 %), gateway 95.6 %, user 91.6 %, result 89.0 %, candidate 82.8 % |
+| Load test (p95 at 10k concurrent votes) | Gatling simulations written; not yet run (needs Docker) |
 
 ## Challenges
 - JWT contract drift between services (subject vs `userId` claim) silently broke authentication downstream.
@@ -69,8 +70,8 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 - Spring Security exceptions caught by a generic `@ExceptionHandler(Exception)` became 500s.
 
 ## Future scope
-Milestones 6–9 are done in code (M9 still has to be run under Docker and on a cluster). Left: M10 (JaCoCo, Testcontainers,
-e2e, Gatling, chaos), plus: an election entity with voting windows, a transactional
+Milestones 6–9 are done in code (M9 still has to be run under Docker and on a cluster). M10 tooling is written (JaCoCo gate, Postgres
+Testcontainers IT, e2e and chaos scripts, Gatling) but the stack-level checks still have to be run on Docker. Also left: an election entity with voting windows, a transactional
 outbox for `vote.cast`, a results recount from the voting DB, Flyway migrations, external anchoring of chain heads,
 unlinkable ballots, and a web UI.
 
@@ -81,6 +82,45 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 ---
 
 # Part 2 — Log (newest first)
+
+### 2026-10-15 — Local database on the Job project's PostgreSQL (no commits)
+- **Decision (Vaibhav):** use the existing local PostgreSQL 18.6 with the Job project's login `jobagent_app`.
+  That login cannot create databases, so the services get **schemas** `userservice`, `candidateservice`,
+  `votingservice` in the `jobagent` database. Trade-off recorded in SECURITY.md (one login for both projects).
+- **`scripts/create-local-schemas.sh`:** creates the schemas, then starts each service once with two command-line
+  overrides (shared database URL, Hikari schema) so Hibernate creates the tables and the seeders run. No service file changed.
+- **Result:** `users`, `candidates`, `votes` + `election_chain_heads` in their schemas, constraints
+  `uq_user_election` and `uq_idempotency_key` present, 1 admin and 10 candidates seeded, nothing in `public`,
+  the Job schema untouched (17 tables). Verified by dropping the three schemas and rebuilding them with the script.
+- **Two mistakes caught:** (1) the first version stopped each service on the "Started" log line, before
+  `AdminSeeder` (an `ApplicationReadyEvent` listener) ran, so no admin was created; it now waits for the readiness
+  probe. (2) Making the schema configurable in `application.yml` with a default of `public` broke 33 tests in
+  user- and candidate-service (their H2 names the schema `PUBLIC`); reverted in favour of the command-line overrides.
+- **Dropped:** the earlier admin-only setup script (dedicated `voting_app` role and databases), since the
+  `postgres` password was not available.
+
+
+### 2026-10-14 — Batch 8: coverage, Testcontainers, e2e, load and chaos tooling (no commits)
+- **JaCoCo 0.8.12 in all six poms:** `mvn verify` writes `target/site/jacoco`. voting-service fails the build below 80 %
+  line coverage (a run with the limit at 95 % failed, so the gate is real).
+- **voting-service 79.2 % → 89.6 %:** `VoteRedisStore` and `CandidateStatusCache` were mocked in every test, so their
+  failure handling had never run. New tests cover key format, TTLs and "Redis down reads as a cache miss". 66 → 85 tests.
+- **`VoteRepositoryPostgresIT`** (Testcontainers, PostgreSQL 16.4, failsafe): unique constraint, chain-head lock making a
+  second transaction wait, 20 concurrent votes by one voter and by different voters. Skipped without Docker; the test
+  bodies were run once against H2 to check the test logic. `ConcurrentTasks` extracted from the H2 concurrency test.
+- **`scripts/e2e.sh`, `scripts/chaos.sh`, `scripts/lib.sh`** (bash + curl + jq) and **`load-tests/`** (Gatling 3.11:
+  seed voters, cast votes with p95 < 500 ms, double-vote burst). Each load run votes in a fresh election so seeded voters
+  are reusable. Details and commands in `TESTING.md` §10.
+- **Bugs caught while checking offline:** the default `voters.csv` path depended on the directory Maven started in
+  (now pinned to `load-tests/` by the pom); a failed seed run overwrote `voters.csv` with an empty file (now it only
+  writes after a complete seed).
+- **Flaky under load:** `GatewayObservabilityTest` hit its 5 s read timeout when six builds ran in parallel; it passes alone.
+- **Open risk found by reading:** voting-service's Feign client has no explicit timeouts (Spring defaults: 10 s connect,
+  60 s read). With 3 retries, a hanging candidate-service could hold a vote far past the gateway's 5 s limit, so the
+  client sees 503 while the vote may still be stored (the idempotent retry then returns it). Proposed: about 1 s connect
+  and read timeouts for `candidate-service`. Not changed yet; the chaos run should confirm it first.
+- **Not verified:** nothing ran against a live stack. Docker, kubectl and jq are not installed on the dev machine.
+
 
 ### 2026-10-14 — Batch 7: Dockerfiles, full docker-compose, Kubernetes (no commits)
 - **Dockerfile + `.dockerignore` in all six services:** multi-stage (maven:3.9.9-eclipse-temurin-17 →
