@@ -83,6 +83,27 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 
 # Part 2 — Log (newest first)
 
+### 2026-10-18 — One `voting_system` database, one schema per service (no commits)
+- **Decision (Vaibhav):** replace the three databases (`userservice_db`, `candidateservice_db`, `voting_service_db`)
+  with one `voting_system` database and schemas `user_service`, `candidate_service`, `voting_service`, the same
+  everywhere (local, Docker, K8s). `user` was avoided as a schema name because it is reserved in PostgreSQL.
+- **Code:** each service's JDBC URL is now `${VOTING_DB_URL}/voting_system?currentSchema=<schema>`; nothing else in
+  `application.yml` changed. Only the URL changed because tests set their own H2/Testcontainers URL, so they are
+  unaffected. The 2026-10-15 attempt (a `default_schema` property) broke the H2 tests.
+- **Infra:** `infra/postgres/init.sql` and the k8s `postgres-init` ConfigMap create the database and the three
+  schemas. `scripts/create-local-schemas.sh` became `scripts/create-local-tables.sh`: it no longer creates schemas or
+  overrides the URL, and only starts each service once to build tables and seed data. `LOCAL_DB_NAME` removed from `.env`.
+- **Local access:** the database is owned by `postgres`, a separate local admin login has all privileges, and the services
+  log in as `voting_app` (its own schemas only) instead of the Job project's `jobagent_app`. The old schemas in
+  `jobagent` are no longer used and were left in place.
+- **Result (verified):** all three test suites pass. `create-local-tables.sh` built `user_service.users`,
+  `candidate_service.candidates`, `voting_service.votes` and `voting_service.election_chain_heads` (owner
+  `voting_app`). `uq_user_election` and `uq_idempotency_key` are present, with 1 admin and 10 candidates seeded and
+  nothing in `public`. `voting_app` is refused by `jobagent`, `expense_manager`, the `public` schema and `CREATE SCHEMA`.
+- **Incident:** a PowerShell 5.1 masking line (`-replace` with a script block, unsupported there) printed the new
+  `voting_app` password to the terminal. It was rotated at once, and the printed value no longer works.
+  Lesson: never echo a line that holds a secret, even through a filter; print only a length or a true/false check.
+
 ### 2026-10-15 — Local database on the Job project's PostgreSQL (no commits)
 - **Decision (Vaibhav):** use the existing local PostgreSQL 18.6 with the Job project's login `jobagent_app`.
   That login cannot create databases, so the services get **schemas** `userservice`, `candidateservice`,

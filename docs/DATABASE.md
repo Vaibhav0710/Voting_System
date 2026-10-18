@@ -1,10 +1,11 @@
 # Database
 
-_Last updated: 2026-10-15_
+_Last updated: 2026-10-18_
 
 ## 1. Engines and connection
-- **PostgreSQL** (README targets 16; any 14+ works), one database per service on one server. Services never read
-  another service's database.
+- **PostgreSQL** (README targets 16; any 14+ works): one `voting_system` database with **one schema per service**
+  ("schema per service"). Each service sets its schema as `currentSchema` in its JDBC URL and never reads another
+  service's schema.
 - **Redis 7** for fast paths, caches, tallies and gateway rate limiting (section 5).
 - **H2** (in-memory) in tests only. voting-service runs H2 in `MODE=PostgreSQL` so the native `ON CONFLICT` SQL is exercised.
 
@@ -12,41 +13,39 @@ Connection comes only from env vars (no credentials in the repo):
 
 | Var | Meaning |
 |---|---|
-| `VOTING_DB_URL` | Server base URL, e.g. `jdbc:postgresql://localhost:5432`. Each service appends its DB name |
+| `VOTING_DB_URL` | Server base URL, e.g. `jdbc:postgresql://localhost:5432`. Each service appends `/voting_system?currentSchema=<its schema>` |
 | `VOTING_DB_USER` / `VOTING_DB_PASSWORD` | DB credentials |
 
-| Service | Database | Default schema |
+| Service | Database | Schema |
 |---|---|---|
-| user-service | `userservice_db` | public |
-| candidate-service | `candidateservice_db` | public |
-| voting-service | `voting_service_db` | public |
+| user-service | `voting_system` | `user_service` |
+| candidate-service | `voting_system` | `candidate_service` |
+| voting-service | `voting_system` | `voting_service` |
 | result-service, api-gateway, eureka | none | — |
 
-The three databases are created on the first start of an empty Postgres volume by `infra/postgres/init.sql`
-(docker compose) or the `postgres-init` ConfigMap (`k8s/infra/postgres.yaml`). For a Postgres you run yourself, run
-`CREATE DATABASE userservice_db;` and so on once. Hibernate creates the tables.
+The schema is not called `user`, because that is a reserved word in PostgreSQL.
 
-**Local run without Docker (current dev machine, 2026-10-15).** The local PostgreSQL 18.6 Windows service is shared
-with the Job project, and only its non-admin login `jobagent_app` is available, which cannot create databases. So the
-three services live as **schemas in the `jobagent` database** instead of three databases:
+The database and its three schemas are created on the first start of an empty Postgres volume by
+`infra/postgres/init.sql` (docker compose) or the `postgres-init` ConfigMap (`k8s/infra/postgres.yaml`). Hibernate
+creates the tables (`ddl-auto: update`) in the schema named by `currentSchema`; the schemas themselves must exist first.
 
-| Service | Local database | Local schema |
-|---|---|---|
-| user-service | `jobagent` | `userservice` |
-| candidate-service | `jobagent` | `candidateservice` |
-| voting-service | `jobagent` | `votingservice` |
+**Why one database, not three (changed 2026-10-18).** Until then each service had its own database (`userservice_db`,
+`candidateservice_db`, `voting_service_db`). Schema per service keeps the same ownership rule (no service reads
+another's tables, no cross-service foreign keys) with one database to create, back up and connect to. Moving a service
+out to its own database later only changes its JDBC URL.
 
-`scripts/create-local-schemas.sh` sets this up (safe to re-run): it creates the schemas as `jobagent_app`, then
-starts each service once with `--spring.datasource.url=<VOTING_DB_URL>/jobagent` and
-`--spring.datasource.hikari.schema=<schema>`, so Hibernate creates the tables exactly as in production and the seeders
-run (1 admin, 10 sample candidates). Settings come from `.env` (`VOTING_DB_USER/PASSWORD` = the Job credentials,
-`LOCAL_DB_NAME=jobagent`). The service config files are unchanged; Docker and K8s still use one database per service.
-The Job app's Flyway manages only the `jobagent` schema, so it never touches these. Run any local service the same way
-(the same two overrides), or it will look for `userservice_db` and fail.
+**Local run without Docker (dev machine).** The local PostgreSQL 18 Windows service also hosts the Job project's
+`jobagent` database. `voting_system` is owned by `postgres`, with `CONNECT` revoked from `PUBLIC`. A separate local admin
+login (not a superuser) has all privileges on it (with grant option) and owns the three schemas. The services connect as
+the app login `voting_app` (from `.env`), which has `USAGE, CREATE` on the three schemas only and owns the tables
+Hibernate creates. The admin login is a member of `voting_app`, so it can manage those tables too. Then `scripts/create-local-tables.sh` starts
+each service once, so Hibernate creates the tables and the seeders run (1 admin, 10 sample candidates). Safe to re-run.
+Before 2026-10-18 the local copy lived as schemas `userservice`, `candidateservice` and `votingservice` inside the
+Job project's `jobagent` database (login `jobagent_app`). Those old schemas are no longer used.
 
 ## 2. Tables
 
-### `users` (userservice_db)
+### `users` (schema `user_service`)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | generated (`GenerationType.UUID`); this is the JWT `userId` |
@@ -56,7 +55,7 @@ The Job app's Flyway manages only the `jobagent` schema, so it never touches the
 | `role` | varchar(20) | `ROLE_VOTER` or `ROLE_ADMIN` |
 | `created_at`, `updated_at` | timestamp | Hibernate-managed |
 
-### `candidates` (candidateservice_db)
+### `candidates` (schema `candidate_service`)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | bigint identity PK | internal only |
@@ -71,7 +70,7 @@ The Job app's Flyway manages only the `jobagent` schema, so it never touches the
 "One name per election" is enforced in the service (`existsByNameAndElectionIdAndIsDeletedFalse`), **not** by a DB
 constraint. The plan's `UNIQUE(name, election_id)` was never added, because soft-deleted rows would block re-use.
 
-### `votes` (voting_service_db)
+### `votes` (schema `voting_service`)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | bigint identity PK | internal; insertion order = chain order |
@@ -89,7 +88,7 @@ constraint. The plan's `UNIQUE(name, election_id)` was never added, because soft
 Constraints: **`uq_user_election UNIQUE (user_id, election_id)`** is the one-vote guarantee, and
 **`uq_idempotency_key UNIQUE (idempotency_key)`**.
 
-### `election_chain_heads` (voting_service_db), added 2026-10-10
+### `election_chain_heads` (schema `voting_service`), added 2026-10-10
 | Column | Type | Notes |
 |---|---|---|
 | `election_id` | UUID PK | |
@@ -129,5 +128,5 @@ election `11111111-1111-1111-1111-111111111111` (5 candidates, one WITHDRAWN, on
 `22222222-2222-2222-2222-222222222222` (5 candidates, one WITHDRAWN). The admin user comes from `AdminSeeder` (env vars).
 
 ## 7. Backup / restore
-Not automated yet. Use `pg_dump -Fc <db>` per database and `pg_restore -d <db>`. The `votes` table is the one that matters,
+Not automated yet. Use `pg_dump -Fc voting_system` (or `-n <schema>` for one service) and `pg_restore -d voting_system`. The `votes` table is the one that matters,
 because results can be rebuilt from it.

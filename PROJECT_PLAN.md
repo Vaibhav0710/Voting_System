@@ -43,8 +43,8 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
                  │             │             │             │          │
            ┌─────▼─────┐ ┌────▼─────┐ ┌─────▼─────┐      │            │
            │PostgreSQL │ │PostgreSQL│ │PostgreSQL │  (No DB)          │
-           │user_db    │ │candidate │ │voting_db  │  Reads from       │
-           │           │ │_db       │ │           │  Voting Service   │
+           │user_      │ │candidate_│ │voting_    │  Reads from       │
+           │service    │ │service   │ │service    │  Voting Service   │
            └───────────┘ └──────────┘ └───────────┘                   │
                                                                       │
                               ┌───────────────────────────────────────┘
@@ -122,7 +122,7 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 | Attribute | Detail |
 |-----------|--------|
 | **Responsibility** | User registration, login, JWT token generation, role management |
-| **Database** | `user_service_db` (PostgreSQL) |
+| **Database** | schema `user_service` in `voting_system` (PostgreSQL) |
 | **Port** | `8081` |
 | **Key Entities** | `User`, `Role` |
 | **Auth** | Issues JWT tokens (consumed by all other services) |
@@ -144,7 +144,7 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 | Attribute | Detail |
 |-----------|--------|
 | **Responsibility** | Candidate registration, status management, election-scoped queries |
-| **Database** | `candidateservice_db` (PostgreSQL) |
+| **Database** | schema `candidate_service` in `voting_system` (PostgreSQL) |
 | **Port** | `8082` |
 | **Key Entities** | `Candidate` (with `CandidateStatus` enum) |
 | **Consumers** | Voting Service (validate), Result Service (display) |
@@ -183,7 +183,7 @@ UNIQUE(name, election_id)
 | Attribute | Detail |
 |-----------|--------|
 | **Responsibility** | Vote casting, hash generation, chain linking, double-vote prevention |
-| **Database** | `voting_service_db` (PostgreSQL) |
+| **Database** | schema `voting_service` in `voting_system` (PostgreSQL) |
 | **Port** | `8083` |
 | **Key Entities** | `Vote` (with hash, prevHash, chain fields) |
 | **Dependencies** | User Service (validate voter), Candidate Service (validate candidate) |
@@ -471,20 +471,24 @@ Add optional per-election chaining for small elections if needed.
 
 ## 🗄️ Database Strategy
 
-### Isolation: One DB Per Service (Strict)
+### Isolation: One Schema Per Service (Strict), changed 2026-10-18
 ```
 PostgreSQL Instance
-├── user_service_db        ← User Service ONLY
-├── candidateservice_db   ← Candidate Service ONLY
-└── voting_service_db      ← Voting Service ONLY
+└── voting_system (database)
+    ├── user_service        ← User Service ONLY
+    ├── candidate_service   ← Candidate Service ONLY
+    └── voting_service      ← Voting Service ONLY
 
 Result Service → No database (reads via Kafka + Feign)
 ```
 
-### Why Separate Databases?
-- **Independent scaling** — Voting DB will be under heavy write load; Candidate DB is mostly reads
+Until 2026-10-18 each service had its own database (`userservice_db`, `candidateservice_db`, `voting_service_db`).
+One database with a schema per service keeps the same boundary and is simpler to run; a service can still move to
+its own database later by changing only its JDBC URL.
+
+### Why Separate Schemas?
 - **Independent schema evolution** — Services can migrate their own schema without coordination
-- **Fault isolation** — One DB going down doesn't take everything offline
+- **One database to run** — One database to create, back up and connect to, locally and in Docker/K8s
 - **True microservice boundary** — No shared tables, no accidental coupling
 
 ---
@@ -694,9 +698,9 @@ github.com/Vaibhav0710/
 | Service | Port | Database |
 |---------|------|----------|
 | API Gateway | `8080` | None |
-| User Service | `8081` | `user_service_db` |
-| Candidate Service | `8082` | `candidateservice_db` |
-| Voting Service | `8083` | `voting_service_db` |
+| User Service | `8081` | `voting_system.user_service` |
+| Candidate Service | `8082` | `voting_system.candidate_service` |
+| Voting Service | `8083` | `voting_system.voting_service` |
 | Result Service | `8084` | None (stateless) |
 | Eureka Server | `8761` | None |
 | Kafka | `9092` | — |

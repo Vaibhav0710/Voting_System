@@ -4,9 +4,11 @@ metadata:
   name: postgres-init
 data:
   init.sql: |
-    CREATE DATABASE userservice_db;
-    CREATE DATABASE candidateservice_db;
-    CREATE DATABASE voting_service_db;
+    CREATE DATABASE voting_system;
+    \connect voting_system
+    CREATE SCHEMA user_service;
+    CREATE SCHEMA candidate_service;
+    CREATE SCHEMA voting_service;
 ---
 apiVersion: v1
 kind: Service

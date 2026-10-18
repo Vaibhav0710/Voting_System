@@ -16,8 +16,8 @@ _Last updated: 2026-10-14. Describes the code as it is; planned items are marked
 │  :8081  │ │   :8082   │ │  :8083   │ │   :8084     │          └───────────────┘
 └────┬────┘ └─────┬─────┘ └──┬────┬──┘ └──┬───────┬──┘
      │PG          │PG   Feign│    │PG     │Redis  │Feign (names, audit)
-userservice_db candidate-  │  voting_service_db     │
-               service_db  │  + Redis               │
+user_service  candidate_  │  voting_service        │
+   schema     service     │  schema + Redis        │
                      ▲      │                       │
                      └──────┘ validate candidate    │
       ═══════════════ Kafka ═════════════════════════╪═══
@@ -90,6 +90,7 @@ springdoc-openapi 2.5.0 · Micrometer (Prometheus registry, Brave tracing → Zi
 | 7 | Every service validates the JWT itself | Defence in depth; services are safe even if reached directly | Trusting gateway headers |
 | 8 | Fallback to cached candidate status, else 503 | Availability without accepting votes for unknown candidates | Fail open |
 | 9 | Admin only via env-configured bootstrap | Public registration must not grant privileges | Role field in registration |
+| 10 | One `voting_system` database, one schema per service (`currentSchema` in each JDBC URL), 2026-10-18 | Same data ownership as separate databases, but one database to create, back up and connect to; a service can still move to its own database by changing its URL | One database per service (used until 2026-10-18) |
 
 ## 7. Deployment (written 2026-10-14, not yet run)
 | | docker compose (`docker-compose.yml`) | Kubernetes (`k8s/`, Kustomize) |

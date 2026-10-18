@@ -10,9 +10,9 @@ _Last updated: 2026-10-10_
 | `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | env vars | user-service bootstrap admin |
 
 - `.gitignore` excludes `.env`, `*.env.local`, `application-local.yml`.
-- **Local only:** on the dev machine the services log in to PostgreSQL as the Job project's `jobagent_app` (Vaibhav's
-  choice, 2026-10-15; see DATABASE.md). One login then reaches both projects' data, so a bug or leak in either can touch
-  the other. Never do this outside the laptop: Docker/K8s use their own `VOTING_DB_USER` and one database per service.
+- **Local database access (since 2026-10-18):** the services log in as `voting_app`, which can only use the three
+  service schemas in `voting_system`; `CONNECT` on `voting_system` is revoked from `PUBLIC`. The Job project's
+  `jobagent_app` login is no longer used here, so neither project's login reaches the other's data (see DATABASE.md).
 - Test YAML files hold **test-only** JWT secrets. Never reuse them anywhere real.
 - Never log: passwords, tokens, `Authorization` headers, secrets, or the candidate a voter chose.
 

@@ -19,7 +19,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 **Goals**
 - Strict one-vote-per-user-per-election, safe under concurrent requests and client retries.
 - Tamper evidence: per-vote SHA-256 hash, optional per-election hash chain, verification APIs.
-- Event-driven, independently deployable services with their own databases.
+- Event-driven, independently deployable services, each owning its own data (one schema per service).
 - Real-time results without querying the voting database for every view.
 - Keep accepting votes when a dependency (Candidate Service, Redis) has a short outage, where that is safe.
 

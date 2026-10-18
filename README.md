@@ -18,7 +18,7 @@ An election voting platform where:
 - ⛓️ **Optional vote chaining** (blockchain-inspired) for ordering proof
 - 🚫 **Zero double-voting** — enforced at 3 layers (Redis → DB → Idempotency)
 - 📡 **Real-time results** via Kafka event streaming
-- 🏗️ **True microservices** — independent services, databases, deployments
+- 🏗️ **True microservices** — independent services, data (one schema each), deployments
 
 ---
 
@@ -51,11 +51,11 @@ An election voting platform where:
         ═══ Kafka Event Bus ═══
 ```
 
-| Service | Responsibility | Port | Database |
+| Service | Responsibility | Port | Database.schema |
 |---------|---------------|------|----------|
-| **User Service** | Auth, JWT, roles | 8081 | `userservice_db` |
-| **Candidate Service** | Candidate CRUD, status, validation | 8082 | `candidateservice_db` |
-| **Voting Service** | Vote casting, hashing, double-vote prevention | 8083 | `voting_service_db` |
+| **User Service** | Auth, JWT, roles | 8081 | `voting_system.user_service` |
+| **Candidate Service** | Candidate CRUD, status, validation | 8082 | `voting_system.candidate_service` |
+| **Voting Service** | Vote casting, hashing, double-vote prevention | 8083 | `voting_system.voting_service` |
 | **Result Service** | Real-time aggregation (Kafka consumer) | 8084 | None (stateless) |
 | **API Gateway** | Routing, rate limiting, JWT validation | 8080 | None |
 | **Eureka Server** | Service discovery | 8761 | None |
@@ -69,7 +69,7 @@ An election voting platform where:
 | Language | Java 17 |
 | Framework | Spring Boot 3.3.6 |
 | Security | Spring Security + JWT |
-| Databases | PostgreSQL (1 per service) |
+| Databases | PostgreSQL (one `voting_system` database, 1 schema per service) |
 | Service Discovery | Netflix Eureka |
 | API Gateway | Spring Cloud Gateway |
 | Sync Communication | OpenFeign |
