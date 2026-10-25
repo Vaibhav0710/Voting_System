@@ -3,7 +3,7 @@
 # Part 1 — Project report
 
 **Title:** Blockchain-Inspired Online Voting System: a tamper-evident, event-driven microservices platform
-**Author:** Vaibhav Jain · **Started:** April 2026 · **Report date:** 2026-10-10
+**Author:** Vaibhav Jain · **Started:** April 2026 · **Report date:** 2026-10-24
 **Repositories:** `Vaibhav0710/Voting_System` (orchestrator) plus one repo per service (see `ARCHITECTURE.md`)
 
 ## Abstract
@@ -58,9 +58,16 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 | Concurrency: 50 parallel votes, same voter | exactly 1 stored, 49 × 409 (`VoteConcurrencyIntegrationTest`) |
 | Concurrency: 50 parallel voters, one election | chain valid, 50 votes, 0 broken links |
 | Retry + fallback wiring | 3 attempts on 503, then cached-status decision (integration test) |
-| Test suites (2026-10-11) | user 26/26, candidate 58/58, voting 54/54, result 28/28 |
-| Line coverage (2026-10-14, JaCoCo) | voting 89.6 % (gate 80 %), gateway 95.6 %, user 91.6 %, result 89.0 %, candidate 82.8 % |
-| Load test (p95 at 10k concurrent votes) | Gatling simulations written; not yet run (needs Docker) |
+| Test suites (2026-10-25, `mvn verify`) | user 31/31, candidate 63/63, voting 90/90 (86 unit + 4 IT), result 34/34, gateway 30/30, eureka 3/3 = **251/251 passed** |
+| Line coverage (JaCoCo) | voting 89.6 % (gate 80 %), gateway 95.6 %, user 91.6 %, result 89.0 %, candidate 82.8 % |
+| Testcontainers integration tests | 4/4 passed against PostgreSQL 16 container (`VoteRepositoryPostgresIT`) |
+| E2E test suite (`scripts/e2e.sh`) | 14/14 passed through API Gateway (auth, voting, replay, verification, audit) |
+| Chaos resilience (`scripts/chaos.sh`) | 8/8 passed: 10/10 votes succeeded during candidate-service outage via Redis fallback, 503 for unknown candidate, clean recovery |
+| Double-vote race (`DoubleVoteSimulation`) | 100 near-simultaneous requests from same voter: 1 Created (201), 99 rejected (409/429), exactly 1 stored vote in DB |
+| Load test (`CastVoteSimulation`, 1,000 votes) | 16.67 req/s (1,000 votes ramped over 60 s), 0% error rate, mean 62 ms, **p95 163 ms** (< 500 ms SLA), **p99 282 ms**; hash chain valid (1000 votes, 0 broken) |
+| 10k load run | not yet run (target: 10,000 concurrent votes with p95 < 500 ms through gateway) |
+| Live tally consistency | 1000 total votes tallied in Redis matching candidate sums and DB rows |
+| Kubernetes cluster deployment (kind v1.28.0) | all 12 pods Ready (**1/1 Running**); **14/14 e2e checks passed** through API Gateway |
 
 ## Challenges
 - JWT contract drift between services (subject vs `userId` claim) silently broke authentication downstream.
@@ -68,10 +75,13 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 - Chaining without a lock forks the chain under concurrency.
 - Resilience4j aspect order: a fallback on the CircuitBreaker swallowed errors before Retry could retry.
 - Spring Security exceptions caught by a generic `@ExceptionHandler(Exception)` became 500s.
+- Docker Engine 29.x API negotiation with Testcontainers 1.19.8 failed; upgraded to Testcontainers 1.21.4 in voting-service pom which supports Docker Engine 29 natively with no per-machine config.
+- Abrupt container stop during chaos caused TCP SYN wait timeouts (~1.5s per retry) exceeding the 5s Gateway timelimiter; solved by fast-fail Feign timeouts (`connectTimeout: 500ms`, `readTimeout: 1000ms`).
+- Kubernetes Docker-link environment variable collision: K8s auto-injects `REDIS_PORT=tcp://...:6379` for Service `redis`, which Spring Boot failed to bind as an integer; fixed by adding `enableServiceLinks: false` and `REDIS_PORT: "6379"` in `k8s/config.yaml`.
+- Legacy WSL2 cgroup v1 compatibility: newer Kubernetes versions (v1.31+) require cgroup v2; kind cluster pinned to `kindest/node:v1.28.0` which fully supports cgroup v1 on Windows.
 
 ## Future scope
-Milestones 6–9 are done in code (M9 still has to be run under Docker and on a cluster). M10 tooling is written (JaCoCo gate, Postgres
-Testcontainers IT, e2e and chaos scripts, Gatling) but the stack-level checks still have to be run on Docker. Also left: an election entity with voting windows, a transactional
+Milestones 1–9 and M10 (done except the 10k load run) are built, executed, and verified on both Docker Compose and Kubernetes (kind). Additional production enhancements: an election entity with voting windows, a transactional
 outbox for `vote.cast`, a results recount from the voting DB, Flyway migrations, external anchoring of chain heads,
 unlinkable ballots, and a web UI.
 
@@ -82,6 +92,75 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 ---
 
 # Part 2 — Log (newest first)
+
+### 2026-10-25 — Review fixes: exact JSONPath, timeout tests, Testcontainers 1.21.4, doc truth pass (no commits)
+- **What changed:**
+  - **Exact JSONPath in Load Tests:** In `load-tests/src/test/java/com/voting/loadtests/DoubleVoteSimulation.java`, replaced recursive search `$.data..totalElements` with exact path `$.data.page.totalElements` matching Spring Data Web Support's `VIA_DTO` serialization format documented in `docs/DESIGN_SYSTEM.md`. Verified compilation with `mvn -f load-tests/pom.xml test-compile`.
+  - **Voting-Service Feign Timeout Test:** Extended `voting-service/.../FeignClientTimeoutTest.java` to explicitly assert both `connectTimeout` (500 ms) and `readTimeout` (1000 ms), plus an assertion that the worst-case 3 retry attempts (3 x (500 + 1000) = 4500 ms) stays below the Gateway's 5 s timelimiter limit (`GATEWAY_TIMEOUT_MS = 5000L`).
+  - **Result-Service Feign Timeout Test:** Added matching `FeignClientTimeoutTest` in `result-service`. Proved negative failure by removing the timeout block in `result-service/src/main/resources/application.yml` (assertion failure on empty config), then restored the block and verified test pass.
+  - **Testcontainers Engine 29+ Compatibility:** In `voting-service/pom.xml`, overrode `<testcontainers.version>` with `1.21.4`, which natively supports Docker Engine 29 API handshake out of the box without machine-level hacks. Renamed `~/.docker-java.properties` to `.docker-java.properties.bak`, ran `mvn verify` in `voting-service`: all 4 `VoteRepositoryPostgresIT` integration tests passed against real PostgreSQL 16 Testcontainer, and JaCoCo coverage verified at 89.6% (gate ≥ 80%).
+  - **Doc Truth Pass:** Aligned all documentation (`PROJECT_PLAN.md`, `docs/PRD.md`, `docs/TESTING.md`, `docs/BLACKBOOK.md`, `README.md`, `docs/ARCHITECTURE.md`, `CLAUDE.md`, `AGENTS.md`) with verified facts. Removed contradictions around Kubernetes deployment status, updated test counts to exact count of 251, clarified the 1,000-vote ramped run, and marked the 10k concurrent load target as not yet run.
+- **What was verified:**
+  - **All test suites green (251 tests total):** user-service 31, candidate-service 63, voting-service 86 unit + 4 IT, result-service 34, api-gateway 30, eureka-server 3 = 251 passed, 0 failures, 0 skipped.
+  - **voting-service `mvn verify`:** 4 PostgreSQL 16 Testcontainers IT passed with Testcontainers 1.21.4 and no `~/.docker-java.properties`. JaCoCo line coverage 89.6% (gate ≥ 80%).
+  - **Load testing:** 1,000 votes ramped over 60 s (`CastVoteSimulation`): 16.67 req/s, 0% errors, mean 62 ms, p95 163 ms, p99 282 ms. 10k concurrent votes target not yet run.
+  - **Double-vote race:** 100 near-simultaneous votes by 1 voter (`DoubleVoteSimulation`): 1 stored, 99 rejected (409/429), verified via `$.data.page.totalElements`.
+  - **Kubernetes cluster:** kind v1.28.0 cluster `voting-cluster`, namespace `voting`, 12 pods 1/1 Running, e2e 14/14 passed through Gateway port-forward.
+  - **Feign timeouts:** connect 500 ms, read 1000 ms verified by unit tests in both voting-service and result-service.
+- **Lesson learned:**
+  - Count tests from Maven's terminal summary output (`Tests run:`), not leftover report XML files in `target/` which can overcount or retain deleted tests.
+  - State load test numbers with their real size and parameters (e.g., 1,000 votes ramped over 60 s); never describe a ramped load run as "concurrent" or claim an unrun 10k concurrent target has passed.
+
+### 2026-10-24 — Docker Compose Stack, Observability, Testcontainers, E2E, Chaos & Gatling Load Testing (all verified)
+- **Goal / Scope:** Full end-to-end execution and validation of Milestones 9 and 10 across the entire 6-microservice architecture on Docker Desktop (Windows 11).
+- **Environment & Build Baseline:**
+  - Verified JDK 17, Maven 3.9.9, Docker Desktop Engine 29.2.2 with Compose v2.
+  - Baseline `mvn test` passed across all 6 services (245 unit/slice tests).
+- **Docker Compose Stack (Milestone 9):**
+  - Generated `.env` with secure credentials and 256-bit Base64 `JWT_SECRET`.
+  - Mapped `POSTGRES_HOST_PORT=5433` to prevent port collisions with native Windows PostgreSQL 18.
+  - Built all 6 Docker images (`voting/*:1.0.0`). All 10 core containers launched in health-ordered sequence and became healthy.
+  - All services registered `UP` in Eureka (`:8761`) and reported `/actuator/health` `UP` through API Gateway (`:8080`).
+- **Observability Stack (Milestone 8.1–8.7):**
+  - Launched with `--profile observability`: Elasticsearch 8.15.3, Logstash 8.15.3, Kibana 8.15.3, Prometheus 2.54.1, Grafana 11.2.2, Zipkin 3.4.
+  - Prometheus scraped all 6 services with 0 errors.
+  - Grafana dashboard "Voting System — Overview" provisioned and verified at `http://localhost:3000`.
+  - Zipkin captured full end-to-end distributed trace for vote casting (`api-gateway` -> `user-service` -> `voting-service` -> `candidate-service` -> Kafka -> `result-service`).
+  - Elasticsearch / Kibana actively ingested structured JSON logs under index pattern `voting-logs-*`.
+- **Testcontainers & JaCoCo Gate (Milestone 10.1–10.2):**
+  - **Issue:** Testcontainers 1.19.8 failed to connect to Docker Desktop Engine 29.x with `BadRequestException (Status 400)` during API handshake.
+  - **Fix:** Configured `api.version=1.44` in `C:\Users\acer\.docker-java.properties`.
+  - **Result:** `VoteRepositoryPostgresIT` ran 4 integration tests against a real PostgreSQL 16 container, verifying constraints, row locks (`FOR UPDATE`), and 20 concurrent transactions. All 4 passed. JaCoCo coverage verified at 89.6% (gate ≥ 80%).
+- **End-to-End Suite (Milestone 10.3):**
+  - Installed `jq` 1.8.2 and executed `scripts/e2e.sh`.
+  - All 14 checks passed: registration, login, election & candidate setup, vote casting (201), idempotency replay (200, same id), duplicate vote rejection (409), receipt fetch, cryptographic hash verification, chain validation, Kafka/Redis real-time results, admin audit, and 401/403 security boundaries.
+- **Chaos Engineering & Feign Timeout Tuning (Milestone 10.5):**
+  - **Issue:** Abrupt container stop (`docker stop voting-system-candidate-service-1`) caused OpenFeign calls to hang on TCP SYN wait timeouts (~1.5s per retry attempt). 3 retry attempts took ~5.1s, exceeding the Gateway timelimiter (5.0s) and returning 503 Gateway Timeout before the fallback could run.
+  - **Fix:** Configured `spring.cloud.openfeign.client.config.default.connectTimeout: 500` and `readTimeout: 1000` in `voting-service` and `result-service`. Exhausts all retries in ~1.9s, smoothly falling back to the Kafka-fed Redis candidate status cache.
+  - **Regression Test:** Added unit regression test `FeignClientTimeoutTest.java` in `voting-service` (verified failing before fix, passing after).
+  - **Result:** Ran `scripts/chaos.sh`; all 8 checks passed! 10/10 concurrent votes succeeded during the outage (201 Created) via Redis fallback; unknown candidates failed closed (503); circuit cleanly recovered after container restart.
+- **Gatling Load Testing (Milestone 10.4 & 10.6):**
+  - **Double-Vote Simulation (`DoubleVoteSimulation`):** 1 voter fired 100 simultaneous votes with distinct idempotency keys. 1 Created (201), 99 rejected (409/429). Gatling JSONPath updated to `$.data.page.totalElements` to handle Spring Boot 3.3.6 Spring Data Page DTO format. Database verified: exactly 1 stored vote.
+  - **Seeding Simulation (`SeedVotersSimulation`):** Registered and logged in 1,000 distinct voters paced at 4 voters/s (8 auth reqs/s, staying under Gateway IP rate limit of 10/s). 2,000 requests, 100% OK, tokens written to `load-tests/voters.csv`.
+  - **Cast Vote Simulation (`CastVoteSimulation`):** 1,000 voters ramped over 60 seconds casting votes across 5 candidates.
+    - Throughput: 16.67 req/s
+    - Error rate: 0.00% (0 failed requests)
+    - Latency: mean 62 ms, p50 44 ms, p75 68 ms, **p95 163 ms** (SLA < 500 ms), **p99 282 ms**, max 449 ms.
+  - **PostgreSQL Database Verification:**
+    `SELECT count(*) AS total_votes, count(distinct user_id) AS distinct_voters FROM voting_service.votes WHERE election_id = '0e51fdef-23cc-43fa-a8aa-fbd5206a5282';`
+    Result: `total_votes: 1000, distinct_voters: 1000`. Zero duplicate votes.
+  - **Cryptographic Hash Chain Validation:**
+    `POST /api/v1/votes/chain/validate/0e51fdef-23cc-43fa-a8aa-fbd5206a5282`
+    Result: `chainValid: true, totalVotesChecked: 1000, brokenLinks: 0, message: "Chain is fully valid."`
+  - **Real-Time Aggregation:**
+    `GET /api/v1/results/election/0e51fdef-23cc-43fa-a8aa-fbd5206a5282`
+    Result: `totalVotes: 1000` matching candidate sums in Redis (215 + 209 + 197 + 193 + 186 = 1000).
+- **Kubernetes Cluster Deployment & Validation (Milestone 9.5 & Phase E):**
+  - **Environment & Legacy WSL2 Compatibility:** Pinned kind cluster image to `kindest/node:v1.28.0` (`voting-cluster`), resolving `cgroup v1` incompatibilities where newer Kubernetes versions (v1.31+) refused to start `kubelet`.
+  - **Image Preloading:** Preloaded all 6 application images (`voting/*:1.0.0`) directly into the kind node using `kind load docker-image`.
+  - **Service Link Collision Fix:** Diagnosed Spring Boot `NumberFormatException` caused by Kubernetes auto-injecting `REDIS_PORT=tcp://...:6379`. Fixed across all application manifests (`api-gateway`, `candidate-service`, `voting-service`, `result-service`, `user-service`, `eureka-server`) by adding `enableServiceLinks: false` and defining `REDIS_PORT: "6379"` in `k8s/config.yaml`.
+  - **Deployment Execution:** Applied manifests via `kubectl apply -k k8s/`. All 12 pods (Postgres StatefulSet with 2Gi PVC, Redis, Kafka, Zookeeper, Eureka, User, Candidate, Voting [2 replicas], Result, Gateway [2 replicas]) achieved **1/1 Running** and healthy status.
+  - **End-to-End Suite (`scripts/e2e.sh`):** Port-forwarded API Gateway `:8080` and executed the full 14-step e2e verification. **All 14 checks passed through Kubernetes** (registration, auth, candidate creation, vote casting, idempotency, duplicate 409 rejection, receipt verification, chain validation, Kafka/Redis real-time results, and admin audit).
 
 ### 2026-10-18 — One `voting_system` database, one schema per service (no commits)
 - **Decision (Vaibhav):** replace the three databases (`userservice_db`, `candidateservice_db`, `voting_service_db`)

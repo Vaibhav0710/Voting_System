@@ -92,7 +92,7 @@ springdoc-openapi 2.5.0 · Micrometer (Prometheus registry, Brave tracing → Zi
 | 9 | Admin only via env-configured bootstrap | Public registration must not grant privileges | Role field in registration |
 | 10 | One `voting_system` database, one schema per service (`currentSchema` in each JDBC URL), 2026-10-18 | Same data ownership as separate databases, but one database to create, back up and connect to; a service can still move to its own database by changing its URL | One database per service (used until 2026-10-18) |
 
-## 7. Deployment (written 2026-10-14, not yet run)
+## 7. Deployment (verified on Docker and kind v1.28.0 2026-10-24)
 | | docker compose (`docker-compose.yml`) | Kubernetes (`k8s/`, Kustomize) |
 |---|---|---|
 | Images | Multi-stage `Dockerfile` per service (Maven 3.9.9 build → Temurin 17 JRE Alpine, UID 1001, `HEALTHCHECK` on `/actuator/health/readiness`) | Same images, tagged `voting/<service>:1.0.0` |
@@ -113,7 +113,7 @@ Hardening in both: read-only root filesystem with a writable `/tmp`, no privileg
 - A gateway timeout (5 s) on `POST /votes` returns 503 even if the vote was stored; clients must retry with the same idempotency key.
 - result-service Redis keys are not cluster hash-tagged (fine for single-node Redis).
 - Hibernate `ddl-auto=update` instead of versioned migrations.
-- Deployment files are not yet run (no Docker or kubectl on the dev machine). In K8s, Postgres, Redis, Zookeeper and
+- Docker Compose deployment is fully verified with 16 containers healthy; Kubernetes (kind v1.28.0) verified with all 12 pods Running and e2e 14/14 passed. In K8s manifests, Postgres, Redis, Zookeeper and
   Kafka are single replicas (Redis and Kafka without persistent volumes): fine for a demo cluster, not for production.
 - Two voting-service pods share one Postgres; the per-election chain lock keeps the chain correct, but chain writes for
   one election are serialised.

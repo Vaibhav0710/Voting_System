@@ -64,7 +64,7 @@ public class DoubleVoteSimulation extends Simulation {
             .exec(http("GET /votes/election (admin)").get("/votes/election/#{electionId}")
                     .header("Authorization", "Bearer #{adminToken}")
                     .check(status().is(200),
-                            jsonPath("$.data.totalElements").ofLong().is(1L),
+                            jsonPath("$.data.page.totalElements").ofLong().is(1L),
                             bodyString().transform(ignored -> CREATED_COUNT.get()).is(1)));
 
     {

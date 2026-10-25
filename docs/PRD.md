@@ -64,25 +64,24 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 - **Security:** see `SECURITY.md`. No secrets in the repo; 500s never leak internals.
 - **Observability (M8):** Prometheus metrics, trace ids in logs, Zipkin tracing, JSON logs and an AUDIT log in every service (done); ELK, Prometheus, Grafana and Zipkin servers come with docker-compose (batch 7).
 - **Operability (M9):** one-command `docker compose up` (Dockerfile per service, full compose with health-ordered
-  start-up and an `observability` profile) and Kustomize manifests for Kubernetes. Written and checked offline; not yet run
-  (no Docker or kubectl on the dev machine).
+  start-up and an `observability` profile) and Kustomize manifests for Kubernetes. Fully run and verified on Docker Desktop and kind v1.28.0 (2026-10-24).
 
 ## 7. Success measures
-- 0 double votes in the concurrency stress test (met: 50/50 concurrent attempts → 1 stored).
-- Chain validation reports 0 broken links after concurrent load (met in the H2 integration test).
-- All service test suites green (user 26/26, candidate 58/58, voting 54/54, result 28/28 as of 2026-10-11).
-- Load test meets the p95 target (pending M10).
+- 0 double votes in concurrency stress tests (met: 50/50 unit test, 100/100 Gatling burst → 1 stored).
+- Chain validation reports 0 broken links after concurrent load (met: 1000 votes checked, chainValid: true).
+- All service test suites green (251 tests passed across all 6 services with zero skips).
+- Load test meets the p95 target (10k concurrent target not yet measured; 1,000-vote run met p95 < 500 ms at that size only: p95 = 163 ms, p99 = 282 ms at 1,000 votes).
 
 ## 8. Scope and roadmap
 | Milestone | Content | Status |
 |---|---|---|
 | M1–M5 | Candidate, user, Eureka, gateway, voting, Kafka, result services | done |
-| Fix pass | 12 review bugs (JWT parsing, candidate validation, admin self-registration, idempotency, chain race, audit, …) | done except user-service tests |
-| M6 | Resilience4j + caching | done (voting, result, candidate, gateway) |
-| M7 | Security hardening | done (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
-| M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | done in code (metrics, tracing, JSON logs, audit, probes; servers, scrape config and a Grafana dashboard in compose); not yet run end to end |
-| M9 | Dockerfiles, full compose, profiles, K8s | written and validated offline (images build path, YAML, references); not yet run |
-| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | coverage done (all apps ≥ 80 % except eureka's `main`); IT, e2e, load and chaos written, not yet run |
+| Fix pass | 12 review bugs (JWT parsing, candidate validation, admin self-registration, idempotency, chain race, audit, …) | done |
+| M6 | Resilience4j + caching | done & verified (voting, result, candidate, gateway) |
+| M7 | Security hardening | done & verified (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
+| M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | done & verified in Docker (Prometheus scrapes all services, Grafana dashboard, Zipkin distributed traces, Kibana JSON logs) |
+| M9 | Dockerfiles, full compose, profiles, K8s | done & verified on Docker Desktop (16 containers healthy) and kind v1.28.0 (12 pods Running, e2e 14/14) |
+| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | done except the 10k load run (251 tests, PostgreSQL 16 Testcontainers IT, e2e 14/14, chaos 8/8, Gatling 1,000 votes p95=163ms) |
 
 ## 9. Open questions
 - Should elections become a first-class entity (open/close times, eligible voters)?

@@ -3,7 +3,7 @@
 > **Goal:** Build a production-grade, tamper-resistant, scalable online voting platform using microservices architecture.  
 > **Author:** Vaibhav  
 > **Started:** April 2026  
-> **Status:** 🟢 Milestone 5 Completed (Result Service)
+> **Status:** 🟡 Milestones 1–9 Completed; M10 done except the 10k load run
 
 ---
 
@@ -139,7 +139,7 @@ A voting platform where every vote is **hashed**, optionally **chained** (blockc
 
 ---
 
-### Service 2: Candidate Service ⏳ IN PROGRESS
+### Service 2: Candidate Service ✅ COMPLETED
 
 | Attribute | Detail |
 |-----------|--------|
@@ -621,75 +621,75 @@ github.com/Vaibhav0710/
 
 ---
 
-### Milestone 6: Resilience & Caching (Week 9)
+### Milestone 6: Resilience & Caching (Week 9) — ✅ COMPLETED
 > Make the system production-tough
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 6.1 | Redis caching — Candidate Service (candidate data) | Candidate Service | 🔜 |
-| 6.2 | Redis caching — Voting Service (vote existence checks) | Voting Service | 🔜 |
-| 6.3 | Resilience4j — Circuit breaker on Feign calls | All services | 🔜 |
-| 6.4 | Resilience4j — Retry policies | All services | 🔜 |
-| 6.5 | Resilience4j — Bulkhead (thread isolation) | Voting Service | 🔜 |
-| 6.6 | Graceful degradation — what happens when Candidate Service is down? | Voting Service | 🔜 |
-| 6.7 | Cache eviction strategy (Kafka-driven) | All services | 🔜 |
+| 6.1 | Redis caching — Candidate Service (candidate data) | Candidate Service | ✅ |
+| 6.2 | Redis caching — Voting Service (vote existence checks) | Voting Service | ✅ |
+| 6.3 | Resilience4j — Circuit breaker on Feign calls | All services | ✅ |
+| 6.4 | Resilience4j — Retry policies | All services | ✅ |
+| 6.5 | Resilience4j — Bulkhead (thread isolation) | Voting Service | ✅ |
+| 6.6 | Graceful degradation — what happens when Candidate Service is down? | Voting Service | ✅ |
+| 6.7 | Cache eviction strategy (Kafka-driven) | All services | ✅ |
 
 ---
 
-### Milestone 7: Security Hardening (Week 10)
+### Milestone 7: Security Hardening (Week 10) — ✅ COMPLETED
 > Lock down every endpoint
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 7.1 | Spring Security config in Candidate Service | Candidate Service | 🔜 |
-| 7.2 | Spring Security config in Voting Service | Voting Service | 🔜 |
-| 7.3 | `@PreAuthorize` on all controller methods | All services | 🔜 |
-| 7.4 | Gateway — CORS policy (restrict origins) | API Gateway | 🔜 |
-| 7.5 | Input sanitization & SQL injection prevention audit | All services | 🔜 |
-| 7.6 | Rate limiting per user (prevent brute-force voting attempts) | API Gateway | 🔜 |
-| 7.7 | Audit logging — who did what, when | All services | 🔜 |
+| 7.1 | Spring Security config in Candidate Service | Candidate Service | ✅ |
+| 7.2 | Spring Security config in Voting Service | Voting Service | ✅ |
+| 7.3 | `@PreAuthorize` on all controller methods | All services | ✅ |
+| 7.4 | Gateway — CORS policy (restrict origins) | API Gateway | ✅ |
+| 7.5 | Input sanitization & SQL injection prevention audit | All services | ✅ |
+| 7.6 | Rate limiting per user (prevent brute-force voting attempts) | API Gateway | ✅ |
+| 7.7 | Audit logging — who did what, when | All services | ✅ |
 
 ---
 
-### Milestone 8: Observability (Week 11)
+### Milestone 8: Observability (Week 11) — ✅ COMPLETED
 > See everything happening in the system
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 8.1 | ELK Stack setup (Docker) | Infrastructure | 🔜 |
-| 8.2 | Structured logging (JSON format) in all services | All services | 🔜 |
-| 8.3 | Logstash pipeline configuration | Infrastructure | 🔜 |
-| 8.4 | Prometheus metrics endpoint (`/actuator/prometheus`) | All services | 🔜 |
-| 8.5 | Grafana dashboards (request rates, latency, errors) | Infrastructure | 🔜 |
-| 8.6 | Distributed tracing (Spring Cloud Sleuth / Micrometer Tracing) | All services | 🔜 |
-| 8.7 | Health check endpoints (`/actuator/health`) | All services | 🔜 |
+| 8.1 | ELK Stack setup (Docker) | Infrastructure | ✅ |
+| 8.2 | Structured logging (JSON format) in all services | All services | ✅ |
+| 8.3 | Logstash pipeline configuration | Infrastructure | ✅ |
+| 8.4 | Prometheus metrics endpoint (`/actuator/prometheus`) | All services | ✅ |
+| 8.5 | Grafana dashboards (request rates, latency, errors) | Infrastructure | ✅ |
+| 8.6 | Distributed tracing (Spring Cloud Sleuth / Micrometer Tracing) | All services | ✅ |
+| 8.7 | Health check endpoints (`/actuator/health`) | All services | ✅ |
 
 ---
 
-### Milestone 9: Containerization & Deployment (Week 12)
+### Milestone 9: Containerization & Deployment (Week 12) — ✅ COMPLETED
 > Run everything with one command
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 9.1 | Dockerfile for each service | All services | 🔜 |
-| 9.2 | `docker-compose.yml` — all services + infra | Infrastructure | 🔜 |
-| 9.3 | Environment-based config (dev/staging/prod profiles) | All services | 🔜 |
-| 9.4 | `docker-compose up` → full system running | Infrastructure | 🔜 |
-| 9.5 | Optional: Kubernetes manifests | Infrastructure | 🔜 |
+| 9.1 | Dockerfile for each service | All services | ✅ |
+| 9.2 | `docker-compose.yml` — all services + infra | Infrastructure | ✅ |
+| 9.3 | Environment-based config (dev/staging/prod profiles) | All services | ✅ |
+| 9.4 | `docker-compose up` → full system running | Infrastructure | ✅ |
+| 9.5 | Optional: Kubernetes manifests | Infrastructure | ✅ Fully verified on kind (all 12 pods Ready, e2e 14/14 passed) |
 
 ---
 
-### Milestone 10: Testing & Load Testing (Week 13)
+### Milestone 10: Testing & Load Testing (Week 13) — 🟡 Done except the 10k load run
 > Prove it works at scale
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 10.1 | Unit tests for all services (80%+ coverage) | All services | ✅ 82–96 % (eureka: only `main`); 80 % gate on voting |
-| 10.2 | Integration tests (Testcontainers + PostgreSQL) | Voting Service | 🟡 written, needs Docker |
-| 10.3 | End-to-end test (register → vote → verify → results) | All services | 🟡 `scripts/e2e.sh`, not yet run |
-| 10.4 | Load testing with Gatling / JMeter (10K concurrent votes) | Voting Service | 🟡 `load-tests/`, not yet run |
-| 10.5 | Chaos testing — kill a service, observe recovery | All services | 🟡 `scripts/chaos.sh`, not yet run |
-| 10.6 | Double-vote stress test (race condition verification) | Voting Service | 🟡 service level ✅ (50 threads); Gatling run pending |
+| 10.1 | Unit tests for all services (80%+ coverage) | All services | ✅ 251 tests passed across 6 services; JaCoCo 89.6% on voting (gate ≥80%) |
+| 10.2 | Integration tests (Testcontainers + PostgreSQL) | Voting Service | ✅ 4/4 passed against real PostgreSQL 16 Testcontainer (`VoteRepositoryPostgresIT`) |
+| 10.3 | End-to-end test (register → vote → verify → results) | All services | ✅ 14/14 passed via `scripts/e2e.sh` through Gateway |
+| 10.4 | Load testing with Gatling / JMeter (10K concurrent votes) | Voting Service | 🟡 1,000 votes / 60 s ramp: p95 163 ms, p99 282 ms, 0 errors; 10k concurrent not yet run |
+| 10.5 | Chaos testing — kill a service, observe recovery | All services | ✅ 8/8 passed via `scripts/chaos.sh` (fast-fail Feign timeouts + Redis fallback) |
+| 10.6 | Double-vote stress test (race condition verification) | Voting Service | ✅ 100 near-simultaneous votes from one voter: 1 stored (201), 99 rejected (409/429) |
 
 ---
 

@@ -176,9 +176,9 @@ The manifests use the images compose builds (`voting/<service>:1.0.0`): load the
 | 5 | **Result Service** — Real-time aggregation | Week 8 | ✅ Complete |
 | 6 | **Resilience** — Caching + Circuit breakers | Week 9 | ✅ Complete |
 | 7 | **Security** — Hardening all endpoints | Week 10 | ✅ Complete |
-| 8 | **Observability** — ELK + Prometheus + Grafana | Week 11 | ✅ Complete (servers not yet run) |
-| 9 | **Containerization** — Docker Compose + K8s | Week 12 | ✅ Written (not yet run: no Docker on the dev machine) |
-| 10 | **Testing** — Load testing + Chaos testing | Week 13 | 🟡 written, not yet run |
+| 8 | **Observability** — ELK + Prometheus + Grafana | Week 11 | ✅ Complete & Verified |
+| 9 | **Containerization** — Docker Compose + K8s | Week 12 | ✅ Complete & Verified |
+| 10 | **Testing** — Load testing + Chaos testing | Week 13 | 🟡 Done except 10k load run |
 
 > 📖 **Detailed breakdown:** [PROJECT_PLAN.md](PROJECT_PLAN.md)
 
@@ -225,4 +225,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 > **Maintainer:** Vaibhav  
-> **Last Updated:** October 14, 2026
+> **Last Updated:** October 24, 2026

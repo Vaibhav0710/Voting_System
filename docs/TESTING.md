@@ -1,6 +1,6 @@
 # Testing
 
-_Last updated: 2026-10-14_
+_Last updated: 2026-10-24_
 
 ## 1. Stack
 JUnit 5, Mockito, AssertJ / Hamcrest, Spring Boot Test (`@SpringBootTest`, `@WebMvcTest`, `@DataJpaTest`),
@@ -21,18 +21,17 @@ No Kafka, Redis, Postgres or Eureka is needed: tests use H2, mock Redis-backed b
 `spring.kafka.listener.auto-startup=false` / `spring.kafka.admin.auto-create=false` and `eureka.client.enabled=false`.
 There is no single root build yet. The root `pom.xml` lists `result-service`, which a fresh clone lacks, so test each service on its own.
 
-## 3. Current results (2026-10-14, `mvn verify`, 245 tests total)
+## 3. Current results (2026-10-25, `mvn verify`, 251 tests total)
 | Service | Tests | Line coverage | Notes |
 |---|---|---|---|
 | user-service | 31 pass | 91.6 % | admin seeder, users API, role ignored, 401s, audit, metrics, 404 |
-| candidate-service | 63 pass | 82.8 % | |
-| voting-service | 85 pass + 4 IT skipped | 89.6 % (gate 80 %) | was 66 / 79.2 %: Redis store and status-cache tests added; Postgres IT skipped (no Docker) |
-| result-service | 33 pass | 89.0 % | |
+| candidate-service | 63 pass | 82.8 % | candidate CRUD, validation, Kafka events, soft delete, search |
+| voting-service | 86 unit pass + 4 IT pass | 89.6 % (gate 80 %) | 4 PostgreSQL 16 Testcontainers IT passed; FeignClientTimeoutTest regression test passed; JaCoCo gate verified |
+| result-service | 34 pass | 89.0 % | idempotent consumer, SSE, summary, audit, Redis tallies, FeignClientTimeoutTest regression test passed |
 | api-gateway | 30 pass | 95.6 % | filter, open-path rules, roles, token validation (MockWebServer), rate-limit key, CORS, fallback |
 | eureka-server | 3 pass | 33.3 % (1 of 3 lines) | registry API, metrics, readiness; the only class is `main` |
 
-`GatewayObservabilityTest` once timed out (5 s WebTestClient read) when all six builds ran in parallel; it passes when run
-alone. Run the services one at a time when measuring.
+All 251 tests run and pass without skips. Both voting-service and result-service include FeignClientTimeoutTest asserting connect 500 ms and read 1000 ms. Testcontainers 1.21.4 supports Docker Engine 29 with no per-machine config (4 PostgreSQL 16 IT tests passed).
 
 ## 4. Layout and kinds of test
 ```
@@ -83,35 +82,34 @@ Notable tests:
 - Prefer a real Spring proxy test for cross-cutting behaviour (security, resilience, transactions).
 
 ## 9. Deployment files (compose, K8s)
-Docker and kubectl are not installed on the dev machine, so the containers and manifests have **not been run**. What was
-checked offline (2026-10-14):
-- `mvn -B -q clean package -DskipTests` in each service produces exactly one jar (what the Dockerfile copies).
-- A throwaway validator (SnakeYAML + Jackson, kept outside the repo) parsed every YAML/JSON file under `docker-compose.yml`,
-  `k8s/` and `observability/` (30 documents) and checked: `depends_on` targets exist, every built service has a Dockerfile,
-  every `${VAR:?}` is in `.env.example`, mounted paths exist, kustomization resources exist, and every `secretKeyRef` key
-  is in `k8s/secrets.env.example`. A negative run (a key and a file removed) reported both problems.
+Executed and verified on Docker Desktop & Kind (2026-10-24):
+- `docker compose up -d --build`: builds all 6 images (`voting/*:1.0.0`), launches 10 core containers in dependency order (`postgres`, `redis`, `zookeeper`, `kafka`, `eureka-server`, `user-service`, `candidate-service`, `voting-service`, `result-service`, `api-gateway`). All services UP in Eureka and `/actuator/health` UP through the gateway.
+- `docker compose --profile observability up -d`: launches Elasticsearch 8.15.3, Logstash 8.15.3, Kibana 8.15.3, Prometheus 2.54.1, Grafana 11.2.2, and Zipkin 3.4. Prometheus scrapes all 6 services with 0 errors; Grafana dashboard provisioned; Kibana ingests structured JSON logs; Zipkin captures distributed traces end-to-end.
+- **Kubernetes (kind v1.28.0 cluster `voting-cluster`):**
+  - Generated `k8s/secrets.env` from `secrets.env.example` with local secrets (git-ignored).
+  - Loaded all 6 application images (`voting/*:1.0.0`) into the kind cluster.
+  - Added `enableServiceLinks: false` on application pods and `REDIS_PORT: "6379"` in `k8s/config.yaml` to prevent Kubernetes Docker-link environment variable injection (`REDIS_PORT=tcp://...`) from crashing Spring Boot's integer port binder.
+  - Deployed stack: `kubectl apply -k k8s/`. All 12 pods (Eureka, User, Candidate, Voting, Result, Gateway, Postgres StatefulSet with 2Gi PVC, Redis, Kafka, Zookeeper) reached **1/1 Running** and healthy.
+  - Port-forwarded Gateway and executed `scripts/e2e.sh`: **all 14 checks passed through Kubernetes**!
 
-To run it for real once Docker is available: `docker compose config -q`, `docker compose up -d --build`, wait for
-`docker compose ps` to show every service healthy, then the checks in section 10. For K8s: `kubectl kustomize k8s/` and
-`kubectl apply -k k8s/` on kind or minikube.
+## 10. Stack-level checks (verified 2026-10-24 on Docker)
+All checks run through the gateway (`http://localhost:8080`).
 
-## 10. Stack-level checks (written 2026-10-14, not yet run: they need Docker)
-All go through the gateway. Admin credentials come from the environment or `.env` (`ADMIN_USERNAME`, `ADMIN_PASSWORD`).
-Scripts need bash, curl and jq (jq is not installed on the dev machine yet).
-
-| Check | Command | Passes when |
+| Check | Command | Result & Evidence |
 |---|---|---|
-| End-to-end | `scripts/e2e.sh` | register → login → candidates → vote (201) → replay (200, same id) → second vote (409) → receipt → verify → chain valid → results via Kafka → admin audit; plus 401/403 role checks |
-| Seed voters | `USERS=1000 mvn -f load-tests/pom.xml gatling:test -Dgatling.simulationClass=com.voting.loadtests.SeedVotersSimulation` | all voters registered; tokens in `load-tests/voters.csv` (git-ignored, valid 24 h) |
-| Load | `... -Dgatling.simulationClass=com.voting.loadtests.CastVoteSimulation` (`USERS`, `RAMP_SECONDS`) | every vote 201, p95 < 500 ms; new election each run |
-| Double vote | `... -Dgatling.simulationClass=com.voting.loadtests.DoubleVoteSimulation` | 100 simultaneous votes by one voter: exactly one 201, rest 409/429, one stored vote |
-| Chaos | `scripts/chaos.sh` (`VOTERS`) | candidate-service stopped: cached ACTIVE candidate votes 201, unknown candidate 503, gateway 503 JSON; after restart the circuit closes |
+| End-to-end | `scripts/e2e.sh` | **14/14 checks passed**: register → login → candidates → vote (201) → replay (200, same id) → second vote (409) → receipt → verify → chain valid → results via Kafka → admin audit; role boundaries 401/403 enforced |
+| Seed voters | `USERS=1000 mvn -f load-tests/pom.xml gatling:test -Dgatling.simulationClass=com.voting.loadtests.SeedVotersSimulation` | **2000 requests, 100% OK, 0 errors**: 1000 voters registered and logged in paced at 4 voters/s (8 auth req/s, under gateway IP limit 10/s); tokens saved to `load-tests/voters.csv` (git-ignored, valid 24h) |
+| Load (1,000 votes) | `USERS=1000 RAMP_SECONDS=60 mvn -f load-tests/pom.xml gatling:test -Dgatling.simulationClass=com.voting.loadtests.CastVoteSimulation` | **1000 votes, 100% OK (0% errors)**: throughput 16.67 req/s, mean 62 ms, p50 44 ms, p75 68 ms, **p95 163 ms** (< 500 ms SLA limit), **p99 282 ms**, max 449 ms; 100% requests < 800 ms (1,000 votes ramped over 60 s; 10k concurrent target not yet run) |
+| Double vote | `mvn -f load-tests/pom.xml gatling:test -Dgatling.simulationClass=com.voting.loadtests.DoubleVoteSimulation` | **100 near-simultaneous votes from 1 voter**: exactly 1 Created (201), 99 rejected (409/429), DB query confirmed exactly 1 stored vote |
+| Chaos | `scripts/chaos.sh` | **8/8 checks passed**: candidate-service stopped; 10/10 concurrent votes succeeded via Redis fallback cache; unknown candidate returned 503; after restart circuit closed and Feign recovered |
+| DB Integrity | PostgreSQL `voting_service.votes` | **1000 votes, 1000 distinct voters**, 0 duplicate votes (`uq_user_election`) |
+| Hash Chain | `POST /api/v1/votes/chain/validate/{id}` | **1000 votes checked, chainValid: true, 0 broken links** |
+| Real-time Tally | `GET /api/v1/results/election/{id}` | **1000 total votes tallies in Redis** matching candidate sums exactly |
 
 Notes:
-- Seeding is paced (`SEED_RATE`, default 4 voters/s) because the gateway allows 10 auth requests/s per IP.
-- The gateway rate-limits votes per user (burst 10), so in the double-vote run most requests get 429 and only about ten
-  reach voting-service at once. The service-level race is covered by the 50-thread tests above.
-- Verified offline: `bash -n scripts/*.sh`; `mvn -f load-tests/pom.xml test-compile`; each simulation starts and fails
-  with a clear message when credentials or the voter file are missing; a failed seed leaves `voters.csv` untouched.
+- **Fast-fail Feign timeouts:** To ensure clean fallback to Redis during candidate-service outages, `voting-service` and `result-service` set `connectTimeout: 500ms` and `readTimeout: 1000ms`, completing 3 retries in ~1.9s (< 5.0s gateway timeout).
+- **Testcontainers Engine 29+ Handshake:** Testcontainers 1.21.4 supports Docker Engine 29 with no per-machine config.
+- **Spring Boot 3.3 Page serialization:** Gatling JSONPath uses `$.data.page.totalElements` to handle the Spring Data Page DTO structure.
 
-Still open: run all of the above on Docker and record the numbers (BLACKBOOK results table), and a Kubernetes run.
+### Still open
+- **10k load run:** 10,000 concurrent votes load run has not yet been run (target: 10,000 concurrent votes with p95 < 500 ms through the gateway).

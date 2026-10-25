@@ -23,6 +23,7 @@ spec:
         prometheus.io/path: /actuator/prometheus
         prometheus.io/port: "8082"
     spec:
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
