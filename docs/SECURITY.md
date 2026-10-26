@@ -94,6 +94,12 @@ How the deployment files enforce this:
 | CORS | gateway `globalcors` with allowed origins from `CORS_ALLOWED_ORIGINS` | done |
 | Invalid token reported as outage (503) | `TokenValidator` maps 401/403 to 401, only real failures to 503 | done |
 
+### Gateway Rate Limiting Details
+- **User / Auth Route (`/api/v1/auth/**`, `/api/v1/users/**`)**: 10/s replenish rate, burst capacity 20 per client IP. Configurable via `GATEWAY_AUTH_REPLENISH_RATE` (default 10) and `GATEWAY_AUTH_BURST_CAPACITY` (default 20) for load-test seeding only.
+- **Votes Route (`/api/v1/votes/**`)**: 5/s replenish rate, burst capacity 10 per authenticated user (`user:<id>`).
+- **Candidates Route (`/api/v1/candidates/**`)**: 5/s replenish rate, burst capacity 10.
+- **Results Route (`/api/v1/results/**`)**: 20/s replenish rate, burst capacity 40.
+
 ## 8. Hard rules
 - Never commit secrets or `.env` files. Never put real secrets in test configs.
 - Never add a role field to public registration.

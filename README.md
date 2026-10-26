@@ -151,14 +151,13 @@ The manifests use the images compose builds (`voting/<service>:1.0.0`): load the
 1. User logs in → receives JWT token
 2. Client sends POST /api/v1/votes (with JWT)
 3. API Gateway validates JWT → forwards to Voting Service
-4. Voting Service:
-   a. Redis check: has this user already voted? → 409 if yes
-   b. Feign call: validate candidate exists & is active
-   c. Redis check: idempotency key → return cached if duplicate
-   d. Compute SHA-256 hash of vote data
-   e. Save to DB (UNIQUE constraint on user+election)
-   f. Set Redis flags (voted, idempotency)
-   g. Publish "vote.cast" to Kafka
+4. Voting Service (one DB transaction):
+   a. Idempotency key seen before? → return the original receipt (200)
+   b. Redis check: has this user already voted? → 409 if yes
+   c. Feign call: validate candidate exists & is active (cached status if Candidate Service is down)
+   d. Lock the election's chain head, compute the SHA-256 hash chained to the previous vote
+   e. Save to DB (UNIQUE constraint on user+election → 409)
+   f. After commit: set Redis flags (voted, idempotency), publish "vote.cast" to Kafka
 5. Result Service consumes Kafka event → updates live tally
 6. Client receives vote receipt with hash
 ```

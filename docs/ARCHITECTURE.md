@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-10-14. Describes the code as it is; planned items are marked._
+_Last updated: 2026-10-26. Describes the code as it is; planned items are marked._
 
 ## 1. Overview
 ```
@@ -96,7 +96,7 @@ springdoc-openapi 2.5.0 · Micrometer (Prometheus registry, Brave tracing → Zi
 | | docker compose (`docker-compose.yml`) | Kubernetes (`k8s/`, Kustomize) |
 |---|---|---|
 | Images | Multi-stage `Dockerfile` per service (Maven 3.9.9 build → Temurin 17 JRE Alpine, UID 1001, `HEALTHCHECK` on `/actuator/health/readiness`) | Same images, tagged `voting/<service>:1.0.0` |
-| Infra | postgres:16.4 (three DBs from `infra/postgres/init.sql`), redis:7.4, cp-zookeeper/cp-kafka 7.4.0 | StatefulSet Postgres (2Gi PVC), Redis, Zookeeper + Kafka Deployments |
+| Infra | postgres:16.4 (one `voting_system` database with three schemas from `infra/postgres/init.sql`), redis:7.4, cp-zookeeper/cp-kafka 7.4.0 | StatefulSet Postgres (2Gi PVC), Redis, Zookeeper + Kafka Deployments |
 | Start order | `depends_on: condition: service_healthy` (infra → eureka → services → gateway) | startup/readiness/liveness probes; pods retry until dependencies are up |
 | Config | `.env` (required vars fail fast with `${VAR:?}`) | ConfigMap `voting-config` + Secret `voting-secrets` from `k8s/secrets.env` |
 | Exposure | Gateway `8080` public; everything else internal or `127.0.0.1` | `ClusterIP` Services; nginx Ingress routes only `/api` to the gateway |

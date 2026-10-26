@@ -1,6 +1,6 @@
 # PRD — Blockchain-Inspired Online Voting System
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-26_
 
 ## 1. Problem
 Online elections must guarantee three things at once: each eligible voter votes **at most once**, nobody can
@@ -60,7 +60,10 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 - **Integrity:** the DB unique constraints `(user_id, election_id)` and `idempotency_key` are the final guarantee; Redis is only a fast path.
 - **Concurrency:** 50 simultaneous votes by one voter must store exactly one vote, and concurrent votes must form one unbroken chain (tested).
 - **Availability:** retry, circuit breaker and bulkhead on Candidate Service calls; a cached status lets voting continue for known ACTIVE candidates.
-- **Performance target (M10):** 10,000 concurrent votes with p95 < 500 ms through the gateway (not yet measured).
+- **Performance target (M10, defined 2026-10-26):** on the dev laptop, through the gateway, one election with the chain
+  on: (a) 10,000 votes at a steady rate of 80 % of the highest rate a step test sustains, with p95 < 500 ms and 0 errors;
+  (b) 10,000 votes sent at once, which may be rejected (503) but must keep integrity: no double votes, chain valid,
+  tally equals stored votes. Not yet measured; plan in `docs/plans/2026-10-26-10k-load-run.md`.
 - **Security:** see `SECURITY.md`. No secrets in the repo; 500s never leak internals.
 - **Observability (M8):** Prometheus metrics, trace ids in logs, Zipkin tracing, JSON logs and an AUDIT log in every service (done); ELK, Prometheus, Grafana and Zipkin servers come with docker-compose (batch 7).
 - **Operability (M9):** one-command `docker compose up` (Dockerfile per service, full compose with health-ordered
@@ -69,8 +72,8 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 ## 7. Success measures
 - 0 double votes in concurrency stress tests (met: 50/50 unit test, 100/100 Gatling burst → 1 stored).
 - Chain validation reports 0 broken links after concurrent load (met: 1000 votes checked, chainValid: true).
-- All service test suites green (251 tests passed across all 6 services with zero skips).
-- Load test meets the p95 target (10k concurrent target not yet measured; 1,000-vote run met p95 < 500 ms at that size only: p95 = 163 ms, p99 = 282 ms at 1,000 votes).
+- All service test suites green (253 tests passed across all 6 services).
+- Load test meets the M10 performance target in §6 (10k runs not yet done; 1,000-vote run met p95 < 500 ms at that size only: p95 = 163 ms, p99 = 282 ms at 1,000 votes).
 
 ## 8. Scope and roadmap
 | Milestone | Content | Status |
@@ -81,7 +84,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 | M7 | Security hardening | done & verified (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
 | M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | done & verified in Docker (Prometheus scrapes all services, Grafana dashboard, Zipkin distributed traces, Kibana JSON logs) |
 | M9 | Dockerfiles, full compose, profiles, K8s | done & verified on Docker Desktop (16 containers healthy) and kind v1.28.0 (12 pods Running, e2e 14/14) |
-| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | done except the 10k load run (251 tests, PostgreSQL 16 Testcontainers IT, e2e 14/14, chaos 8/8, Gatling 1,000 votes p95=163ms) |
+| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | done except the 10k load run (253 tests, PostgreSQL 16 Testcontainers IT, e2e 14/14, chaos 8/8, Gatling 1,000 votes p95=163ms) |
 
 ## 9. Open questions
 - Should elections become a first-class entity (open/close times, eligible voters)?

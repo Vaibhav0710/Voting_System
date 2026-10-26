@@ -1,6 +1,6 @@
 # Testing
 
-_Last updated: 2026-10-24_
+_Last updated: 2026-10-26_
 
 ## 1. Stack
 JUnit 5, Mockito, AssertJ / Hamcrest, Spring Boot Test (`@SpringBootTest`, `@WebMvcTest`, `@DataJpaTest`),
@@ -13,6 +13,7 @@ cd voting-service && mvn test                              # one service
 cd voting-service && mvn test -Dtest=VoteServiceTest       # one class
 cd voting-service && mvn test -Dtest=VoteServiceTest#*Chain*   # matching methods
 cd voting-service && mvn verify                            # + *IT tests, coverage report and 80 % gate
+mvn -f load-tests/pom.xml test                             # load-test helper unit tests (no stack needed)
 ```
 `mvn verify` writes a coverage report to `target/site/jacoco/index.html` in every service. Only voting-service enforces
 a minimum (80 % line coverage, `jacoco.line.minimum` in its pom); the others report. `*IT` classes run in `verify` through
@@ -21,17 +22,19 @@ No Kafka, Redis, Postgres or Eureka is needed: tests use H2, mock Redis-backed b
 `spring.kafka.listener.auto-startup=false` / `spring.kafka.admin.auto-create=false` and `eureka.client.enabled=false`.
 There is no single root build yet. The root `pom.xml` lists `result-service`, which a fresh clone lacks, so test each service on its own.
 
-## 3. Current results (2026-10-25, `mvn verify`, 251 tests total)
+## 3. Current results (`mvn verify`, 253 tests total)
 | Service | Tests | Line coverage | Notes |
 |---|---|---|---|
-| user-service | 31 pass | 91.6 % | admin seeder, users API, role ignored, 401s, audit, metrics, 404 |
-| candidate-service | 63 pass | 82.8 % | candidate CRUD, validation, Kafka events, soft delete, search |
-| voting-service | 86 unit pass + 4 IT pass | 89.6 % (gate 80 %) | 4 PostgreSQL 16 Testcontainers IT passed; FeignClientTimeoutTest regression test passed; JaCoCo gate verified |
-| result-service | 34 pass | 89.0 % | idempotent consumer, SSE, summary, audit, Redis tallies, FeignClientTimeoutTest regression test passed |
-| api-gateway | 30 pass | 95.6 % | filter, open-path rules, roles, token validation (MockWebServer), rate-limit key, CORS, fallback |
-| eureka-server | 3 pass | 33.3 % (1 of 3 lines) | registry API, metrics, readiness; the only class is `main` |
+| user-service | 31 pass (2026-10-25) | 91.6 % | admin seeder, users API, role ignored, 401s, audit, metrics, 404 |
+| candidate-service | 63 pass (2026-10-25) | 82.8 % | candidate CRUD, validation, Kafka events, soft delete, search |
+| voting-service | 86 unit pass (2026-10-26) + 4 IT pass (2026-10-25) | 89.6 % with IT, 89.1 % unit only (gate 80 %) | 4 PostgreSQL 16 Testcontainers IT; FeignClientTimeoutTest regression test; JaCoCo gate met |
+| result-service | 34 pass (2026-10-26) | 89.0 % | idempotent consumer, SSE, summary, audit, Redis tallies, FeignClientTimeoutTest regression test |
+| api-gateway | 32 pass (2026-10-26) | 95.6 % | filter, open-path rules, roles, token validation (MockWebServer), rate-limit key, auth rate-limit env overrides, CORS, fallback |
+| eureka-server | 3 pass (2026-10-25) | 33.3 % (1 of 3 lines) | registry API, metrics, readiness; the only class is `main` |
+| load-tests (helpers) | 15 pass (2026-10-26, `mvn test`) | not measured | status tally, voters-file guards, integrity report, 503 retry; the simulations themselves need the stack |
 
-All 251 tests run and pass without skips. Both voting-service and result-service include FeignClientTimeoutTest asserting connect 500 ms and read 1000 ms. Testcontainers 1.21.4 supports Docker Engine 29 with no per-machine config (4 PostgreSQL 16 IT tests passed).
+All 253 service tests pass (the 15 load-test helper tests are counted separately). On 2026-10-26 the three changed services were re-run; voting's 4 IT tests skipped because Docker
+was not running (they last passed on 2026-10-25), and the unchanged services were not re-run. Both voting-service and result-service include FeignClientTimeoutTest asserting connect 500 ms and read 700 ms (worst case 3 x (500 + 700) + 2 x 200 = 4,000 ms, leaving 1,000 ms headroom under the 5 s gateway limit). Testcontainers 1.21.4 supports Docker Engine 29 with no per-machine config (4 PostgreSQL 16 IT tests passed).
 
 ## 4. Layout and kinds of test
 ```
@@ -46,8 +49,8 @@ All 251 tests run and pass without skips. Both voting-service and result-service
 Notable tests:
 - `VoteConcurrencyIntegrationTest`: 50 threads, same voter → exactly 1 stored; 50 voters → chain valid.
 - `VoteRepositoryPostgresIT`: the same guarantees on real PostgreSQL 16 (constraint `uq_user_election`, the chain-head
-  `FOR UPDATE` lock blocking a second transaction, 20 concurrent votes). Its test bodies were checked once on H2; the
-  container run itself has not happened yet (no Docker).
+  `FOR UPDATE` lock blocking a second transaction, 20 concurrent votes). Passed against a PostgreSQL 16 container on
+  2026-10-25; skipped when Docker is not running.
 - `VoteRedisStoreTest` / `CandidateStatusCacheTest`: key format, TTLs, and every Redis failure read as a cache miss.
 - `CandidateValidatorResilienceIntegrationTest`: a 503 is retried 3× through the real Resilience4j proxy, then the cache fallback runs.
 - `ResultServiceContextTest`: full context wiring + retry/fallback on `CandidateDirectory`.
@@ -107,9 +110,13 @@ All checks run through the gateway (`http://localhost:8080`).
 | Real-time Tally | `GET /api/v1/results/election/{id}` | **1000 total votes tallies in Redis** matching candidate sums exactly |
 
 Notes:
-- **Fast-fail Feign timeouts:** To ensure clean fallback to Redis during candidate-service outages, `voting-service` and `result-service` set `connectTimeout: 500ms` and `readTimeout: 1000ms`, completing 3 retries in ~1.9s (< 5.0s gateway timeout).
+- **Fast-fail Feign timeouts:** To ensure clean fallback to Redis during candidate-service outages, `voting-service` and `result-service` set `connectTimeout: 500ms` and `readTimeout: 700ms`, completing 3 retries in ~1.9s and worst case in 4,000 ms (< 5.0s gateway timeout with 1,000 ms headroom).
 - **Testcontainers Engine 29+ Handshake:** Testcontainers 1.21.4 supports Docker Engine 29 with no per-machine config.
 - **Spring Boot 3.3 Page serialization:** Gatling JSONPath uses `$.data.page.totalElements` to handle the Spring Data Page DTO structure.
 
 ### Still open
-- **10k load run:** 10,000 concurrent votes load run has not yet been run (target: 10,000 concurrent votes with p95 < 500 ms through the gateway).
+- **10k load run:** not yet run; the tooling is built (`CapacitySimulation`, `BurstVoteSimulation`, an integrity check
+  after every voting simulation, `scripts/sample-load.ps1`, three new Grafana panels) but not yet run against the stack.
+  Target and run book in `docs/plans/2026-10-26-10k-load-run.md`: a step test finds the
+  sustainable rate, 10,000 votes at 80 % of it must meet p95 < 500 ms with 0 errors, and a 10,000-vote burst must keep
+  integrity (see PRD §6).

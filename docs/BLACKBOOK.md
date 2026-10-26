@@ -58,14 +58,14 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 | Concurrency: 50 parallel votes, same voter | exactly 1 stored, 49 × 409 (`VoteConcurrencyIntegrationTest`) |
 | Concurrency: 50 parallel voters, one election | chain valid, 50 votes, 0 broken links |
 | Retry + fallback wiring | 3 attempts on 503, then cached-status decision (integration test) |
-| Test suites (2026-10-25, `mvn verify`) | user 31/31, candidate 63/63, voting 90/90 (86 unit + 4 IT), result 34/34, gateway 30/30, eureka 3/3 = **251/251 passed** |
+| Test suites (`mvn verify`, 2026-10-25/26) | user 31/31, candidate 63/63, voting 90/90 (86 unit + 4 IT), result 34/34, gateway 32/32, eureka 3/3 = **253/253 passed** |
 | Line coverage (JaCoCo) | voting 89.6 % (gate 80 %), gateway 95.6 %, user 91.6 %, result 89.0 %, candidate 82.8 % |
 | Testcontainers integration tests | 4/4 passed against PostgreSQL 16 container (`VoteRepositoryPostgresIT`) |
 | E2E test suite (`scripts/e2e.sh`) | 14/14 passed through API Gateway (auth, voting, replay, verification, audit) |
 | Chaos resilience (`scripts/chaos.sh`) | 8/8 passed: 10/10 votes succeeded during candidate-service outage via Redis fallback, 503 for unknown candidate, clean recovery |
 | Double-vote race (`DoubleVoteSimulation`) | 100 near-simultaneous requests from same voter: 1 Created (201), 99 rejected (409/429), exactly 1 stored vote in DB |
 | Load test (`CastVoteSimulation`, 1,000 votes) | 16.67 req/s (1,000 votes ramped over 60 s), 0% error rate, mean 62 ms, **p95 163 ms** (< 500 ms SLA), **p99 282 ms**; hash chain valid (1000 votes, 0 broken) |
-| 10k load run | not yet run (target: 10,000 concurrent votes with p95 < 500 ms through gateway) |
+| 10k load run | not yet run (target redefined 2026-10-26: 10,000 votes at a sustained rate with p95 < 500 ms and 0 errors, plus a 10,000-vote burst that keeps integrity; see PRD §6) |
 | Live tally consistency | 1000 total votes tallied in Redis matching candidate sums and DB rows |
 | Kubernetes cluster deployment (kind v1.28.0) | all 12 pods Ready (**1/1 Running**); **14/14 e2e checks passed** through API Gateway |
 
@@ -76,7 +76,7 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 - Resilience4j aspect order: a fallback on the CircuitBreaker swallowed errors before Retry could retry.
 - Spring Security exceptions caught by a generic `@ExceptionHandler(Exception)` became 500s.
 - Docker Engine 29.x API negotiation with Testcontainers 1.19.8 failed; upgraded to Testcontainers 1.21.4 in voting-service pom which supports Docker Engine 29 natively with no per-machine config.
-- Abrupt container stop during chaos caused TCP SYN wait timeouts (~1.5s per retry) exceeding the 5s Gateway timelimiter; solved by fast-fail Feign timeouts (`connectTimeout: 500ms`, `readTimeout: 1000ms`).
+- Abrupt container stop during chaos caused TCP SYN wait timeouts (~1.5s per retry) exceeding the 5s Gateway timelimiter; solved by fast-fail Feign timeouts (`connectTimeout: 500ms`, `readTimeout: 700ms`, worst case 4,000 ms leaving 1,000 ms headroom).
 - Kubernetes Docker-link environment variable collision: K8s auto-injects `REDIS_PORT=tcp://...:6379` for Service `redis`, which Spring Boot failed to bind as an integer; fixed by adding `enableServiceLinks: false` and `REDIS_PORT: "6379"` in `k8s/config.yaml`.
 - Legacy WSL2 cgroup v1 compatibility: newer Kubernetes versions (v1.31+) require cgroup v2; kind cluster pinned to `kindest/node:v1.28.0` which fully supports cgroup v1 on Windows.
 
@@ -93,11 +93,77 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 
 # Part 2 — Log (newest first)
 
+### 2026-10-26 — 10k load-run tooling, Tasks 1–5 of the plan (no commits)
+- **What changed (`load-tests/`):** JUnit 5 + AssertJ for helper tests; `StatusTally` (status per vote, `no-response`
+  when there is none); `LoadPlan` (step-test arithmetic, refuses a voters file that is too short or older than 23 h);
+  `ElectionReport` + `ElectionCheck` (after every voting simulation: accepted vs stored votes, chain validation, tally
+  per candidate, tally wait; written to `load-tests/target/integrity/<election>.txt`); `VoteScenario` + `VoteRun`
+  (shared vote request and before/after code); `CastVoteSimulation` reworked onto them (same injection and assertions);
+  new `CapacitySimulation` (step test) and `BurstVoteSimulation` (all at once, integrity only).
+- **Monitoring:** three Grafana panels (DB pool active/pending, Kafka consumer lag, JVM CPU); Prometheus scrapes every
+  5 s; `scripts/sample-load.ps1` samples container CPU and Postgres lock waits to a CSV.
+- **Found while building:** the step test pushes past capacity on purpose, so it uses the same lenient integrity mode as
+  the burst (`OVERLOAD`: votes stored after a gateway timeout are reported, not failed). After an overload the gateway's
+  circuit breaker can stay open for 10 s, so the check retries reads that get 503 instead of crashing. Votes can commit
+  after the gateway gave up on them, so the check waits until the stored count has been steady for 5 s.
+- **Verified:** `mvn -f load-tests/pom.xml test` 15/15, each test watched failing first; all simulations compile; the
+  dashboard JSON parses; `sample-load.ps1` parses and refuses clearly when Docker is not running.
+- **Not verified:** nothing has run against the stack yet (Docker Desktop was off). Task 6 (smoke run with 50 voters)
+  proves the HTTP paths, status recording on a failed check, the sampler CSV and the new panels.
+
+### 2026-10-26 — Decision: how the 10k load run is defined and measured (plan only)
+- **Context:** the PRD target "10,000 concurrent votes with p95 < 500 ms" cannot be met as worded on the dev laptop
+  (i5-9300H, 4 cores, ~7.9 GB for Docker, Gatling on the same machine): every vote in one election waits on the chain
+  row lock, voting-service's pool is 10 connections, and the gateway turns 5 s waits into 503s and open circuit breakers.
+- **Chosen:** a step test finds the highest steady rate with p95 < 500 ms and 0 errors (the knee); 10,000 votes at 80 %
+  of the knee must pass p95 < 500 ms and 0 errors; 10,000 votes at once are judged on integrity only (no double votes,
+  chain valid, tally = stored). Baseline first, then at most two tuning rounds of one change each, kept only if the knee
+  rises ≥ 10 %. One extra step test with the chain off measures what the chain costs. Monitoring: Prometheus + Grafana
+  plus `docker stats` and Postgres lock-wait samples.
+- **Rejected:** a fixed number of voters in flight (arbitrary), requiring p95 < 500 ms for the burst (measures the laptop,
+  not the design), tuning everything up front (cannot show which change helped), the full observability profile (ELK and
+  Zipkin compete for the same CPU and RAM).
+- **Found while planning:** about 20 seed attempts on 2026-10-25 failed with 503 at ~5 s (BCrypt on register + login);
+  the run at 24 voters/s passed (20,016/20,016 requests). Voter tokens last 24 h, so seeding happens on the run day.
+- **Plan:** `docs/plans/2026-10-26-10k-load-run.md` (8 tasks: helpers and integrity check test-first, capacity and burst
+  simulations, Grafana panels and a sampler, a smoke run, the run day, results). PRD §6–7, TESTING "Still open" and the
+  report's results row now use this definition.
+
+### 2026-10-26 — Configurable auth rate limit for load-test seeding, test recount, doc drift fixes (no commits)
+- **Why:** the 10k load run needs 10,000 voters registered and logged in first. The auth route allows 10 req/s per IP
+  (burst 20), so the 1,000-voter seed was paced at 4 voters/s; at that pace 10,000 voters would take about 42 minutes.
+- **What changed:**
+  - **api-gateway:** the `user-service` route's `RequestRateLimiter` reads `GATEWAY_AUTH_REPLENISH_RATE` /
+    `GATEWAY_AUTH_BURST_CAPACITY` (defaults 10 / 20, unchanged). The votes, candidates and results routes keep their
+    fixed limits. New `AuthRateLimiterPropertiesTest` (2 tests): defaults stay 10 / 20; overrides 100 / 200 reach the route.
+  - **docker-compose.yml:** passes the two gateway variables. Hikari pool size can be overridden per service with
+    matching names: `USER_SERVICE_HIKARI_MAXIMUM_POOL_SIZE` (default 20, up from Hikari's 10) and
+    `VOTING_SERVICE_HIKARI_MAXIMUM_POOL_SIZE` (default 10); compose maps each to that service's
+    `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE`. The voting one was first named `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE`
+    on the host too; renamed so the two match and neither looks like a global setting. `.env.example` lists all four
+    overrides, commented out.
+  - **scripts/verify-rate-limit.ps1:** fires 25 concurrent logins through the gateway and expects 429s past burst 20.
+  - **docs/SECURITY.md:** per-route rate-limit table.
+  - **Doc drift fixed:** `ARCHITECTURE.md` §7 (one `voting_system` database with three schemas, not three databases);
+    README vote flow (idempotency check first, Redis and Kafka side effects after commit); `TESTING.md` (the Postgres IT
+    tests did run on 2026-10-25); result-service `FeignClientTimeoutTest` headroom comment (it described
+    voting-service's DB write; result-service has no DB).
+  - **Test count** 251 → 253 in `TESTING.md`, `PRD.md`, this report and `PROJECT_PLAN.md`.
+- **What was verified (`mvn verify`, 2026-10-26):** api-gateway 32/32 (95.6 %), voting-service 86/86 unit (89.1 %
+  without IT, gate 80 % met), result-service 34/34 (89.0 %).
+- **Pool-size rename verified with `docker compose config`:** defaults resolve to user 20 / voting 10; setting
+  `USER_SERVICE_…=30` and `VOTING_SERVICE_…=40` gives user 30 / voting 40. The same check failed before the rename
+  (voting got 10 instead of 40).
+- **Not verified:** voting-service's 4 Postgres IT tests skipped (Docker Desktop not running; last passed 2026-10-25);
+  `verify-rate-limit.ps1` and the compose overrides were not run against a live stack; user, candidate and eureka were
+  not re-run (no changes).
+- **Lesson learned:** when only some suites are re-run, say which counts are new and which are carried over.
+
 ### 2026-10-25 — Review fixes: exact JSONPath, timeout tests, Testcontainers 1.21.4, doc truth pass (no commits)
 - **What changed:**
   - **Exact JSONPath in Load Tests:** In `load-tests/src/test/java/com/voting/loadtests/DoubleVoteSimulation.java`, replaced recursive search `$.data..totalElements` with exact path `$.data.page.totalElements` matching Spring Data Web Support's `VIA_DTO` serialization format documented in `docs/DESIGN_SYSTEM.md`. Verified compilation with `mvn -f load-tests/pom.xml test-compile`.
-  - **Voting-Service Feign Timeout Test:** Extended `voting-service/.../FeignClientTimeoutTest.java` to explicitly assert both `connectTimeout` (500 ms) and `readTimeout` (1000 ms), plus an assertion that the worst-case 3 retry attempts (3 x (500 + 1000) = 4500 ms) stays below the Gateway's 5 s timelimiter limit (`GATEWAY_TIMEOUT_MS = 5000L`).
-  - **Result-Service Feign Timeout Test:** Added matching `FeignClientTimeoutTest` in `result-service`. Proved negative failure by removing the timeout block in `result-service/src/main/resources/application.yml` (assertion failure on empty config), then restored the block and verified test pass.
+  - **Voting-Service Feign Timeout Test & Headroom Tuning:** Cut Feign `readTimeout` from 1000 ms to 700 ms in `voting-service/src/main/resources/application.yml` and `result-service/src/main/resources/application.yml` (read timeout first set to 1000 ms (chaos fix), cut to 700 ms for headroom). Extended `FeignClientTimeoutTest.java` test-first in both services: asserted `connectTimeout: 500ms`, `readTimeout: 700ms`, `MIN_HEADROOM_MS = 500L`, and worst case `3 × (500 + 700) + 2 × 200 = 4,000 ms`, ensuring 1,000 ms headroom under the 5 s gateway limit to allow DB write and chain lock processing. Proved test failure before `application.yml` edit and pass after.
+  - **Result-Service Feign Timeout Test:** Added matching `FeignClientTimeoutTest` in `result-service` verifying the identical 500 ms connect, 700 ms read, 200 ms wait, and 1,000 ms headroom constraints.
   - **Testcontainers Engine 29+ Compatibility:** In `voting-service/pom.xml`, overrode `<testcontainers.version>` with `1.21.4`, which natively supports Docker Engine 29 API handshake out of the box without machine-level hacks. Renamed `~/.docker-java.properties` to `.docker-java.properties.bak`, ran `mvn verify` in `voting-service`: all 4 `VoteRepositoryPostgresIT` integration tests passed against real PostgreSQL 16 Testcontainer, and JaCoCo coverage verified at 89.6% (gate ≥ 80%).
   - **Doc Truth Pass:** Aligned all documentation (`PROJECT_PLAN.md`, `docs/PRD.md`, `docs/TESTING.md`, `docs/BLACKBOOK.md`, `README.md`, `docs/ARCHITECTURE.md`, `CLAUDE.md`, `AGENTS.md`) with verified facts. Removed contradictions around Kubernetes deployment status, updated test counts to exact count of 251, clarified the 1,000-vote ramped run, and marked the 10k concurrent load target as not yet run.
 - **What was verified:**
@@ -106,7 +172,7 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
   - **Load testing:** 1,000 votes ramped over 60 s (`CastVoteSimulation`): 16.67 req/s, 0% errors, mean 62 ms, p95 163 ms, p99 282 ms. 10k concurrent votes target not yet run.
   - **Double-vote race:** 100 near-simultaneous votes by 1 voter (`DoubleVoteSimulation`): 1 stored, 99 rejected (409/429), verified via `$.data.page.totalElements`.
   - **Kubernetes cluster:** kind v1.28.0 cluster `voting-cluster`, namespace `voting`, 12 pods 1/1 Running, e2e 14/14 passed through Gateway port-forward.
-  - **Feign timeouts:** connect 500 ms, read 1000 ms verified by unit tests in both voting-service and result-service.
+  - **Feign timeouts:** connect 500 ms, read 700 ms, retry wait 200 ms (worst case 4,000 ms, 1,000 ms headroom) verified by unit tests in both voting-service and result-service; Compose images rebuilt and verified via `scripts/chaos.sh` (8/8) and `scripts/e2e.sh` (14/14).
 - **Lesson learned:**
   - Count tests from Maven's terminal summary output (`Tests run:`), not leftover report XML files in `target/` which can overcount or retain deleted tests.
   - State load test numbers with their real size and parameters (e.g., 1,000 votes ramped over 60 s); never describe a ramped load run as "concurrent" or claim an unrun 10k concurrent target has passed.
