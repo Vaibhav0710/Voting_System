@@ -13,7 +13,19 @@ final class LoadTestConfig {
     static final int SEED_RATE = Integer.parseInt(env("SEED_RATE", "4"));
     /** Seeded voter tokens; the pom points the default at load-tests/voters.csv. */
     static final Path VOTERS_FILE = Path.of(env("VOTERS_FILE", System.getProperty("voters.file", "voters.csv")));
+    /** Where each run's integrity report is written; the pom points it at load-tests/target/integrity. */
+    static final Path INTEGRITY_DIR = Path.of(System.getProperty("integrity.dir", "target/integrity"));
     static final int P95_LIMIT_MS = 500;
+    /** Step test (CapacitySimulation): votes/s of the first level, added per level, number of levels, their lengths. */
+    static final int START_RATE = Integer.parseInt(env("START_RATE", "20"));
+    static final int STEP_RATE = Integer.parseInt(env("STEP_RATE", "20"));
+    static final int STEPS = Integer.parseInt(env("STEPS", "6"));
+    static final int LEVEL_SECONDS = Integer.parseInt(env("LEVEL_SECONDS", "15"));
+    static final int RAMP_BETWEEN_SECONDS = Integer.parseInt(env("RAMP_BETWEEN_SECONDS", "5"));
+    /** How long the post-run check waits for result-service's tally to catch up with the stored votes. */
+    static final int TALLY_WAIT_SECONDS = Integer.parseInt(env("TALLY_WAIT_SECONDS", "120"));
+    /** Voter tokens live 24 h (JWT_EXPIRATION); refuse files older than this so a run never starts with dead tokens. */
+    static final int TOKEN_MAX_AGE_HOURS = Integer.parseInt(env("TOKEN_MAX_AGE_HOURS", "23"));
 
     private LoadTestConfig() {
     }

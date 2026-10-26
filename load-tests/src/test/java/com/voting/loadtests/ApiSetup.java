@@ -15,7 +15,8 @@ import java.util.UUID;
 
 /**
  * Plain HTTP calls through the gateway that prepare a run before Gatling starts measuring:
- * admin login, a fresh election with candidates (so voters can be reused across runs) and test voters.
+ * admin login, a fresh election with candidates (so voters can be reused across runs) and test voters; also the
+ * reads used by the post-run integrity check.
  */
 final class ApiSetup {
 
@@ -24,6 +25,21 @@ final class ApiSetup {
     private static final String API = LoadTestConfig.GATEWAY_URL + "/api/v1";
 
     record Election(UUID id, List<UUID> candidateIds) {
+    }
+
+    /** The gateway answered with a status other than the expected one. */
+    static final class UnexpectedStatusException extends IllegalStateException {
+
+        private final int status;
+
+        UnexpectedStatusException(String message, int status) {
+            super(message);
+            this.status = status;
+        }
+
+        int status() {
+            return status;
+        }
     }
 
     private ApiSetup() {
@@ -52,26 +68,38 @@ final class ApiSetup {
         return new Election(electionId, List.copyOf(ids));
     }
 
-    private static JsonNode post(String path, Object payload, String token, int expectedStatus) {
+    static JsonNode post(String path, Object payload, String token, int expectedStatus) {
         try {
             HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(API + path))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(payload)));
-            if (token != null) {
-                request.header("Authorization", "Bearer " + token);
-            }
+            return send(request, "POST " + path, token, expectedStatus);
+        } catch (IOException e) {
+            throw new IllegalStateException("POST " + path + " failed: " + e.getMessage(), e);
+        }
+    }
+
+    static JsonNode get(String path, String token, int expectedStatus) {
+        return send(HttpRequest.newBuilder(URI.create(API + path)).GET(), "GET " + path, token, expectedStatus);
+    }
+
+    private static JsonNode send(HttpRequest.Builder request, String description, String token, int expectedStatus) {
+        if (token != null) {
+            request.header("Authorization", "Bearer " + token);
+        }
+        try {
             HttpResponse<String> response = CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
             JsonNode body = JSON.readTree(response.body());
             if (response.statusCode() != expectedStatus) {
-                throw new IllegalStateException("POST " + path + ": expected " + expectedStatus + ", got "
-                        + response.statusCode() + " (" + body.path("message").asText() + ")");
+                throw new UnexpectedStatusException(description + ": expected " + expectedStatus + ", got "
+                        + response.statusCode() + " (" + body.path("message").asText() + ")", response.statusCode());
             }
             return body;
         } catch (IOException e) {
-            throw new IllegalStateException("POST " + path + " failed: " + e.getMessage(), e);
+            throw new IllegalStateException(description + " failed: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted during POST " + path, e);
+            throw new IllegalStateException("Interrupted during " + description, e);
         }
     }
 }

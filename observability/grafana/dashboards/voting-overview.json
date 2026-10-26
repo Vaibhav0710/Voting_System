@@ -92,6 +92,56 @@
           "instant": true
         }
       ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "DB pool: active and pending connections",
+      "gridPos": { "x": 0, "y": 22, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (application) (hikaricp_connections_active)",
+          "legendFormat": "{{application}} active"
+        },
+        {
+          "refId": "B",
+          "expr": "max by (application) (hikaricp_connections_pending)",
+          "legendFormat": "{{application}} pending"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Kafka consumer lag (records)",
+      "gridPos": { "x": 12, "y": 22, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (application) (kafka_consumer_fetch_manager_records_lag_max)",
+          "legendFormat": "{{application}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "JVM CPU by service",
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (application) (process_cpu_usage)",
+          "legendFormat": "{{application}}"
+        }
+      ]
     }
   ]
 }
