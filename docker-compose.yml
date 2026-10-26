@@ -121,6 +121,7 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: ${USER_SERVICE_HIKARI_MAXIMUM_POOL_SIZE:-20}
     depends_on:
       postgres: { condition: service_healthy }
       eureka-server: { condition: service_healthy }
@@ -150,6 +151,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       REDIS_HOST: redis
       VOTING_CHAIN_ENABLED: ${VOTING_CHAIN_ENABLED:-true}
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: ${VOTING_SERVICE_HIKARI_MAXIMUM_POOL_SIZE:-10}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -178,6 +180,8 @@ services:
       <<: *common-env
       REDIS_HOST: redis
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      GATEWAY_AUTH_REPLENISH_RATE: ${GATEWAY_AUTH_REPLENISH_RATE:-10}
+      GATEWAY_AUTH_BURST_CAPACITY: ${GATEWAY_AUTH_BURST_CAPACITY:-20}
     ports:
       - "8080:8080"
     depends_on:
