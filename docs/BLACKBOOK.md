@@ -93,7 +93,33 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 
 # Part 2 — Log (newest first)
 
-### 2026-10-26 — Smoke run of the 10k tooling: two environment findings and a metrics fix (fix not committed)
+### 2026-10-27 — A failed integrity check now fails the load run (not committed)
+- **Why:** the review below found that `INTEGRITY FAILED` was only printed; capacity and burst have no Gatling
+  assertions, so a broken run looked green.
+- **What changed (`load-tests/`):** `ElectionReport.requireIntact()` throws `IllegalStateException("INTEGRITY FAILED: …")`
+  listing every problem; `VoteRun.check` calls it after printing and writing the report, so all three voting
+  simulations fail from `after()`. Javadocs of the three simulations say so.
+- **How Gatling 3.11.5 behaves (checked with a throwaway simulation, then deleted):** an exception in `after()` makes
+  the run exit 1 ("Run crashed") but skips the HTML report; only `simulation.log` is written.
+  `mvn -f load-tests/pom.xml gatling:test -Dgatling.reportsOnly=<run folder>` rebuilt the report from it (exit 0).
+- **Verified:** two new `ElectionReportTest` tests failed first (no `requireIntact`), then `mvn -f load-tests/pom.xml
+  test` 17/17; all simulations compile.
+- **Not verified:** not run against the stack (Docker Desktop was paused); the 2026-10-26 smoke runs were all
+  `INTEGRITY OK`, so they would have passed unchanged.
+
+### 2026-10-27 — Review of the 10k-tooling commits; integrity failures do not fail a run
+- **Reviewed (all on `main` and pushed):** root `8b3a337` (auth rate limit and pool sizes configurable), `6f7251c` and
+  `a4ec23a` (submodule bumps), `cb20c4f` (capacity and burst simulations, integrity check), docs `199fa6c`, `0dfd592`;
+  api-gateway `88a80c1`, voting-service `603ab5d`, result-service `1aba0f6` and `6312aa8`. The step-test arithmetic
+  (`LoadPlan.capacityArrivals`), the settle loop in `ElectionCheck` and the result-service Micrometer listener are correct.
+- **Finding (fixed the same day, entry above):** `VoteRun.check` returns the `ElectionReport` but no simulation acts on it, so
+  `INTEGRITY FAILED` is only printed and written to `load-tests/target/integrity/`; the Gatling run still exits 0.
+  `CapacitySimulation` and `BurstVoteSimulation` have no Gatling assertions, so for them a lost or doubled vote, a broken
+  chain or a wrong tally would look like a passing run.
+- **Verified:** `mvn -f load-tests/pom.xml test` 15/15 (2026-10-27). Service counts (254) carried over from 2026-10-26.
+- **Docs:** the three 2026-10-26 headings said "no commits"; they now say when the work was committed.
+
+### 2026-10-26 — Smoke run of the 10k tooling: two environment findings and a metrics fix (committed and pushed 2026-10-27)
 - **Smoke run (50 voters, `load-tests/target/smoke-voters.csv`):** after the fixes below, paced 50/50 accepted (p95
   306 ms), step test 27/27 (2 → 3 votes/s), burst 50/50 (p95 2.6 s), every run `INTEGRITY OK`; a bad token is recorded
   as `401=1` with the Gatling assertion failing as intended; the sampler wrote 8 samples for 12 containers.
@@ -114,7 +140,7 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 - **Lesson learned:** check `docker stats` for containers outside the project before any load test, and warm the
   services up after a restart; both made healthy code look broken.
 
-### 2026-10-26 — 10k load-run tooling, Tasks 1–5 of the plan (no commits)
+### 2026-10-26 — 10k load-run tooling, Tasks 1–5 of the plan (committed and pushed 2026-10-26)
 - **What changed (`load-tests/`):** JUnit 5 + AssertJ for helper tests; `StatusTally` (status per vote, `no-response`
   when there is none); `LoadPlan` (step-test arithmetic, refuses a voters file that is too short or older than 23 h);
   `ElectionReport` + `ElectionCheck` (after every voting simulation: accepted vs stored votes, chain validation, tally
@@ -151,7 +177,7 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
   simulations, Grafana panels and a sampler, a smoke run, the run day, results). PRD §6–7, TESTING "Still open" and the
   report's results row now use this definition.
 
-### 2026-10-26 — Configurable auth rate limit for load-test seeding, test recount, doc drift fixes (no commits)
+### 2026-10-26 — Configurable auth rate limit for load-test seeding, test recount, doc drift fixes (committed and pushed 2026-10-26)
 - **Why:** the 10k load run needs 10,000 voters registered and logged in first. The auth route allows 10 req/s per IP
   (burst 20), so the 1,000-voter seed was paced at 4 voters/s; at that pace 10,000 voters would take about 42 minutes.
 - **What changed:**
