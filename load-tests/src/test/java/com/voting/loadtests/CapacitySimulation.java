@@ -16,7 +16,7 @@ import static io.gatling.javaapi.core.CoreDsl.incrementUsersPerSec;
  * Step test that finds the knee: the vote rate starts at {@code START_RATE} votes/s and rises by {@code STEP_RATE}
  * for {@code STEPS} levels of {@code LEVEL_SECONDS}, with {@code RAMP_BETWEEN_SECONDS} linear ramps between levels.
  * No Gatling assertions: the knee is the highest level with 0 failed votes and p95 < 500 ms in the report's charts.
- * The integrity check runs afterwards.
+ * The integrity check runs afterwards and fails the run if votes were lost or doubled, the chain broke or the tally is off.
  */
 public class CapacitySimulation extends Simulation {
 

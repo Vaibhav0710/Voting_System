@@ -28,9 +28,9 @@ final class VoteRun {
         System.out.println("Voting in election " + election.id() + " with " + LoadTestConfig.CANDIDATES + " candidates");
     }
 
-    /** Prints the status breakdown and the integrity report of this run's election. */
-    ElectionReport check(ElectionReport.Mode mode) {
+    /** Prints the status breakdown and the integrity report of this run's election, and fails the run if it is broken. */
+    void check(ElectionReport.Mode mode) {
         System.out.println("Vote statuses: " + tally.describe());
-        return ElectionCheck.run(mode, adminToken, election, tally.count(201));
+        ElectionCheck.run(mode, adminToken, election, tally.count(201)).requireIntact();
     }
 }

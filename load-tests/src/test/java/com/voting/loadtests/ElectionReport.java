@@ -57,7 +57,22 @@ record ElectionReport(Mode mode, long accepted, long stored, Map<UUID, Long> sto
                         + " storedAfterTimeout=" + storedAfterTimeout(),
                 "chainValid=" + chainValid + " brokenLinks=" + brokenLinks,
                 "tally " + tallied + " of " + stored + " (waited " + tallyWait.toSeconds() + " s)",
-                problems.isEmpty() ? "INTEGRITY OK" : "INTEGRITY FAILED: " + String.join("; ", problems));
+                problems.isEmpty() ? "INTEGRITY OK" : failure(problems));
+    }
+
+    /**
+     * Fails the run when integrity is broken. Thrown from a simulation's {@code after()}, it makes Gatling exit non-zero
+     * but skips the HTML report; rebuild it from the run's {@code simulation.log} with {@code -Dgatling.reportsOnly}.
+     */
+    void requireIntact() {
+        List<String> problems = problems();
+        if (!problems.isEmpty()) {
+            throw new IllegalStateException(failure(problems));
+        }
+    }
+
+    private static String failure(List<String> problems) {
+        return "INTEGRITY FAILED: " + String.join("; ", problems);
     }
 
     /** A candidate missing from one side has 0 votes there (vote counts list only candidates with votes). */

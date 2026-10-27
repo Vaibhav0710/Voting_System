@@ -10,7 +10,7 @@ import static io.gatling.javaapi.core.CoreDsl.rampUsers;
  * Step 2 of a load run (the paced run): {@code USERS} seeded voters each cast one vote, spread evenly over
  * {@code RAMP_SECONDS} (a steady {@code USERS / RAMP_SECONDS} votes per second).
  * Every run votes in a new election, so the same seeded voters can be reused.
- * Passes only if every vote returns 201 and p95 latency stays under 500 ms; the integrity check runs afterwards.
+ * Passes only if every vote returns 201 and p95 latency stays under 500 ms and the integrity check afterwards finds no problems.
  */
 public class CastVoteSimulation extends Simulation {
 
