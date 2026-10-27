@@ -58,7 +58,7 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 | Concurrency: 50 parallel votes, same voter | exactly 1 stored, 49 × 409 (`VoteConcurrencyIntegrationTest`) |
 | Concurrency: 50 parallel voters, one election | chain valid, 50 votes, 0 broken links |
 | Retry + fallback wiring | 3 attempts on 503, then cached-status decision (integration test) |
-| Test suites (`mvn verify`, 2026-10-25/26) | user 31/31, candidate 63/63, voting 90/90 (86 unit + 4 IT), result 34/34, gateway 32/32, eureka 3/3 = **253/253 passed** |
+| Test suites (`mvn verify`, 2026-10-25/26) | user 31/31, candidate 63/63, voting 90/90 (86 unit + 4 IT), result 35/35, gateway 32/32, eureka 3/3 = **254/254 passed** |
 | Line coverage (JaCoCo) | voting 89.6 % (gate 80 %), gateway 95.6 %, user 91.6 %, result 89.0 %, candidate 82.8 % |
 | Testcontainers integration tests | 4/4 passed against PostgreSQL 16 container (`VoteRepositoryPostgresIT`) |
 | E2E test suite (`scripts/e2e.sh`) | 14/14 passed through API Gateway (auth, voting, replay, verification, audit) |
@@ -93,6 +93,27 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 
 # Part 2 — Log (newest first)
 
+### 2026-10-26 — Smoke run of the 10k tooling: two environment findings and a metrics fix (fix not committed)
+- **Smoke run (50 voters, `load-tests/target/smoke-voters.csv`):** after the fixes below, paced 50/50 accepted (p95
+  306 ms), step test 27/27 (2 → 3 votes/s), burst 50/50 (p95 2.6 s), every run `INTEGRITY OK`; a bad token is recorded
+  as `401=1` with the Gatling assertion failing as intended; the sampler wrote 8 samples for 12 containers.
+- **Finding 1, kind cluster:** the first seed failed (21/104 OK, 503s at ~5 s). `docker stats` showed the kind node from
+  the 2026-10-24 Kubernetes test (`voting-cluster-control-plane`) using 466 % CPU and 3.4 GB of Docker's 7.7 GB: it
+  restarts with Docker Desktop and runs the whole stack a second time. With it paused (`docker pause`), the same seed
+  passed 104/104 at p95 229 ms. It was also up during the 2026-10-25 seed attempts, so it, not BCrypt, is the likely
+  cause of those failures. Run day: stop or delete the cluster first.
+- **Finding 2, cold start:** the first paced run after Docker started failed: 48 of 50 votes got 503 at ~5 s, yet 34 were
+  stored. voting-service's log shows every vote waiting from 22:30:27 to 22:30:40 while Kafka was first initialised for
+  `vote.cast`; the gateway timed the votes out and its circuit breaker rejected the rest (not stored). The same run on
+  warm services passed 50/50. Recorded in ARCHITECTURE §8; not fixed yet. The integrity check reported it correctly
+  ("32 vote(s) stored without a 201").
+- **Fix, result-service Kafka metrics:** result-service exposed no Kafka client metrics, so the new lag panel had no
+  result-service series. Its hand-built consumer factory lacked the Micrometer listener that Spring Boot adds only to
+  its own factory. Added `MicrometerConsumerListener` (constructor injection for `KafkaConfig`); `KafkaConfigTest`
+  failed first, result-service 35/35 (89.2 %); after a rebuild the panel shows result-service lag.
+- **Lesson learned:** check `docker stats` for containers outside the project before any load test, and warm the
+  services up after a restart; both made healthy code look broken.
+
 ### 2026-10-26 — 10k load-run tooling, Tasks 1–5 of the plan (no commits)
 - **What changed (`load-tests/`):** JUnit 5 + AssertJ for helper tests; `StatusTally` (status per vote, `no-response`
   when there is none); `LoadPlan` (step-test arithmetic, refuses a voters file that is too short or older than 23 h);
@@ -123,8 +144,9 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 - **Rejected:** a fixed number of voters in flight (arbitrary), requiring p95 < 500 ms for the burst (measures the laptop,
   not the design), tuning everything up front (cannot show which change helped), the full observability profile (ELK and
   Zipkin compete for the same CPU and RAM).
-- **Found while planning:** about 20 seed attempts on 2026-10-25 failed with 503 at ~5 s (BCrypt on register + login);
-  the run at 24 voters/s passed (20,016/20,016 requests). Voter tokens last 24 h, so seeding happens on the run day.
+- **Found while planning:** about 20 seed attempts on 2026-10-25 failed with 503 at ~5 s (first put down to BCrypt;
+  the smoke run later showed the kind cluster competing for Docker's CPU as the likely cause); the run at 24 voters/s
+  passed (20,016/20,016 requests). Voter tokens last 24 h, so seeding happens on the run day.
 - **Plan:** `docs/plans/2026-10-26-10k-load-run.md` (8 tasks: helpers and integrity check test-first, capacity and burst
   simulations, Grafana panels and a sampler, a smoke run, the run day, results). PRD §6–7, TESTING "Still open" and the
   report's results row now use this definition.

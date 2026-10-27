@@ -111,6 +111,10 @@ Hardening in both: read-only root filesystem with a writable `/tmp`, no privileg
 - `vote.cast` is published after commit but not transactionally (no outbox). A crash between commit and send loses the event for results (the voting DB still has the vote).
 - Gateway calls user-service for every authenticated request (extra hop). Local JWT verification at the gateway would remove it.
 - A gateway timeout (5 s) on `POST /votes` returns 503 even if the vote was stored; clients must retry with the same idempotency key.
+- Cold start: the first votes after voting-service starts wait about 12 s while Kafka is initialised lazily on the
+  first `vote.cast` send (seen 2026-10-26). Votes arriving then are stored but answered 503 by the gateway, which then
+  opens its circuit breaker and rejects the next votes for 10 s. Not yet fixed (initialising the producer at startup
+  would avoid it); load tests send a warm-up run first.
 - result-service Redis keys are not cluster hash-tagged (fine for single-node Redis).
 - Hibernate `ddl-auto=update` instead of versioned migrations.
 - Docker Compose deployment is fully verified with 16 containers healthy; Kubernetes (kind v1.28.0) verified with all 12 pods Running and e2e 14/14 passed. In K8s manifests, Postgres, Redis, Zookeeper and

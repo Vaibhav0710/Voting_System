@@ -684,7 +684,7 @@ github.com/Vaibhav0710/
 
 | # | Task | Service | Status |
 |---|------|---------|--------|
-| 10.1 | Unit tests for all services (80%+ coverage) | All services | ✅ 253 tests passed across 6 services; JaCoCo 89.6% on voting (gate ≥80%) |
+| 10.1 | Unit tests for all services (80%+ coverage) | All services | ✅ 254 tests passed across 6 services; JaCoCo 89.6% on voting (gate ≥80%) |
 | 10.2 | Integration tests (Testcontainers + PostgreSQL) | Voting Service | ✅ 4/4 passed against real PostgreSQL 16 Testcontainer (`VoteRepositoryPostgresIT`) |
 | 10.3 | End-to-end test (register → vote → verify → results) | All services | ✅ 14/14 passed via `scripts/e2e.sh` through Gateway |
 | 10.4 | Load testing with Gatling / JMeter (10K concurrent votes) | Voting Service | 🟡 1,000 votes / 60 s ramp: p95 163 ms, p99 282 ms, 0 errors; 10k runs not yet done (target and plan: `docs/plans/2026-10-26-10k-load-run.md`) |

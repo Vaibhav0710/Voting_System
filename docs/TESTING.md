@@ -22,18 +22,18 @@ No Kafka, Redis, Postgres or Eureka is needed: tests use H2, mock Redis-backed b
 `spring.kafka.listener.auto-startup=false` / `spring.kafka.admin.auto-create=false` and `eureka.client.enabled=false`.
 There is no single root build yet. The root `pom.xml` lists `result-service`, which a fresh clone lacks, so test each service on its own.
 
-## 3. Current results (`mvn verify`, 253 tests total)
+## 3. Current results (`mvn verify`, 254 tests total)
 | Service | Tests | Line coverage | Notes |
 |---|---|---|---|
 | user-service | 31 pass (2026-10-25) | 91.6 % | admin seeder, users API, role ignored, 401s, audit, metrics, 404 |
 | candidate-service | 63 pass (2026-10-25) | 82.8 % | candidate CRUD, validation, Kafka events, soft delete, search |
 | voting-service | 86 unit pass (2026-10-26) + 4 IT pass (2026-10-25) | 89.6 % with IT, 89.1 % unit only (gate 80 %) | 4 PostgreSQL 16 Testcontainers IT; FeignClientTimeoutTest regression test; JaCoCo gate met |
-| result-service | 34 pass (2026-10-26) | 89.0 % | idempotent consumer, SSE, summary, audit, Redis tallies, FeignClientTimeoutTest regression test |
+| result-service | 35 pass (2026-10-26) | 89.2 % | idempotent consumer, SSE, summary, audit, Redis tallies, FeignClientTimeoutTest regression test, Kafka consumer metrics |
 | api-gateway | 32 pass (2026-10-26) | 95.6 % | filter, open-path rules, roles, token validation (MockWebServer), rate-limit key, auth rate-limit env overrides, CORS, fallback |
 | eureka-server | 3 pass (2026-10-25) | 33.3 % (1 of 3 lines) | registry API, metrics, readiness; the only class is `main` |
 | load-tests (helpers) | 15 pass (2026-10-26, `mvn test`) | not measured | status tally, voters-file guards, integrity report, 503 retry; the simulations themselves need the stack |
 
-All 253 service tests pass (the 15 load-test helper tests are counted separately). On 2026-10-26 the three changed services were re-run; voting's 4 IT tests skipped because Docker
+All 254 service tests pass (the 15 load-test helper tests are counted separately). On 2026-10-26 the three changed services were re-run; voting's 4 IT tests skipped because Docker
 was not running (they last passed on 2026-10-25), and the unchanged services were not re-run. Both voting-service and result-service include FeignClientTimeoutTest asserting connect 500 ms and read 700 ms (worst case 3 x (500 + 700) + 2 x 200 = 4,000 ms, leaving 1,000 ms headroom under the 5 s gateway limit). Testcontainers 1.21.4 supports Docker Engine 29 with no per-machine config (4 PostgreSQL 16 IT tests passed).
 
 ## 4. Layout and kinds of test
@@ -115,8 +115,11 @@ Notes:
 - **Spring Boot 3.3 Page serialization:** Gatling JSONPath uses `$.data.page.totalElements` to handle the Spring Data Page DTO structure.
 
 ### Still open
-- **10k load run:** not yet run; the tooling is built (`CapacitySimulation`, `BurstVoteSimulation`, an integrity check
-  after every voting simulation, `scripts/sample-load.ps1`, three new Grafana panels) but not yet run against the stack.
+- **10k load run:** not yet run. The tooling (`CapacitySimulation`, `BurstVoteSimulation`, an integrity check after
+  every voting simulation, `scripts/sample-load.ps1`, three new Grafana panels) passed a 50-voter smoke run on
+  2026-10-26: paced 50/50 (p95 306 ms), step test 27/27, burst 50/50 (p95 2.6 s), all `INTEGRITY OK`; a bad token is
+  recorded as `401=1`. Before any measured run: stop the kind cluster (it shares Docker's CPU and RAM) and send one
+  warm-up run after any service restart (see ARCHITECTURE §8, cold start).
   Target and run book in `docs/plans/2026-10-26-10k-load-run.md`: a step test finds the
   sustainable rate, 10,000 votes at 80 % of it must meet p95 < 500 ms with 0 errors, and a 10,000-vote burst must keep
   integrity (see PRD §6).

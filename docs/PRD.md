@@ -72,7 +72,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 ## 7. Success measures
 - 0 double votes in concurrency stress tests (met: 50/50 unit test, 100/100 Gatling burst → 1 stored).
 - Chain validation reports 0 broken links after concurrent load (met: 1000 votes checked, chainValid: true).
-- All service test suites green (253 tests passed across all 6 services).
+- All service test suites green (254 tests passed across all 6 services).
 - Load test meets the M10 performance target in §6 (10k runs not yet done; 1,000-vote run met p95 < 500 ms at that size only: p95 = 163 ms, p99 = 282 ms at 1,000 votes).
 
 ## 8. Scope and roadmap
@@ -84,7 +84,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 | M7 | Security hardening | done & verified (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
 | M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | done & verified in Docker (Prometheus scrapes all services, Grafana dashboard, Zipkin distributed traces, Kibana JSON logs) |
 | M9 | Dockerfiles, full compose, profiles, K8s | done & verified on Docker Desktop (16 containers healthy) and kind v1.28.0 (12 pods Running, e2e 14/14) |
-| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | done except the 10k load run (253 tests, PostgreSQL 16 Testcontainers IT, e2e 14/14, chaos 8/8, Gatling 1,000 votes p95=163ms) |
+| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | done except the 10k load run (254 tests, PostgreSQL 16 Testcontainers IT, e2e 14/14, chaos 8/8, Gatling 1,000 votes p95=163ms) |
 
 ## 9. Open questions
 - Should elections become a first-class entity (open/close times, eligible voters)?
