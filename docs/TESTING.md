@@ -115,7 +115,8 @@ Notes:
 - **Spring Boot 3.3 Page serialization:** Gatling JSONPath uses `$.data.page.totalElements` to handle the Spring Data Page DTO structure.
 
 ### Still open
-- **10k load run:** not yet run. The tooling (`CapacitySimulation`, `BurstVoteSimulation`, an integrity check after
+- **10k load run:** skipped on 2026-11-20 because the dev laptop cannot run 10,000 votes (seed, paced and burst
+  runs); it stays unmeasured, so no 10k result may be claimed. The tooling stays in the repo for a bigger machine. The tooling (`CapacitySimulation`, `BurstVoteSimulation`, an integrity check after
   every voting simulation, `scripts/sample-load.ps1`, three new Grafana panels) passed a 50-voter smoke run on
   2026-10-26: paced 50/50 (p95 306 ms), step test 27/27, burst 50/50 (p95 2.6 s), all `INTEGRITY OK`; a bad token is
   recorded as `401=1`. Before any measured run: stop the kind cluster (it shares Docker's CPU and RAM) and send one
