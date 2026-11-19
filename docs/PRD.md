@@ -63,7 +63,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 - **Performance target (M10, defined 2026-10-26):** on the dev laptop, through the gateway, one election with the chain
   on: (a) 10,000 votes at a steady rate of 80 % of the highest rate a step test sustains, with p95 < 500 ms and 0 errors;
   (b) 10,000 votes sent at once, which may be rejected (503) but must keep integrity: no double votes, chain valid,
-  tally equals stored votes. Not yet measured; plan in `docs/plans/2026-10-26-10k-load-run.md`.
+  tally equals stored votes. Not measured: skipped 2026-11-20 because the dev laptop cannot run it; plan kept in `docs/plans/2026-10-26-10k-load-run.md`.
 - **Security:** see `SECURITY.md`. No secrets in the repo; 500s never leak internals.
 - **Observability (M8):** Prometheus metrics, trace ids in logs, Zipkin tracing, JSON logs and an AUDIT log in every service (done); ELK, Prometheus, Grafana and Zipkin servers come with docker-compose (batch 7).
 - **Operability (M9):** one-command `docker compose up` (Dockerfile per service, full compose with health-ordered
@@ -73,7 +73,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 - 0 double votes in concurrency stress tests (met: 50/50 unit test, 100/100 Gatling burst → 1 stored).
 - Chain validation reports 0 broken links after concurrent load (met: 1000 votes checked, chainValid: true).
 - All service test suites green (254 tests passed across all 6 services).
-- Load test meets the M10 performance target in §6 (10k runs not yet done; 1,000-vote run met p95 < 500 ms at that size only: p95 = 163 ms, p99 = 282 ms at 1,000 votes).
+- Load test meets the M10 performance target in §6 (not met: the 10k runs were skipped 2026-11-20, the dev laptop cannot run them; 1,000-vote run met p95 < 500 ms at that size only: p95 = 163 ms, p99 = 282 ms at 1,000 votes).
 
 ## 8. Scope and roadmap
 | Milestone | Content | Status |
@@ -84,7 +84,7 @@ Simple CRUD voting apps fail on double-voting races, offer no tamper evidence an
 | M7 | Security hardening | done & verified (gateway spoofing, path matching, roles, CORS; limits and @PreAuthorize; AUDIT log in all services) |
 | M8 | Observability (Prometheus, ELK, Zipkin, Grafana) | done & verified in Docker (Prometheus scrapes all services, Grafana dashboard, Zipkin distributed traces, Kibana JSON logs) |
 | M9 | Dockerfiles, full compose, profiles, K8s | done & verified on Docker Desktop (16 containers healthy) and kind v1.28.0 (12 pods Running, e2e 14/14) |
-| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | done except the 10k load run (254 tests, PostgreSQL 16 Testcontainers IT, e2e 14/14, chaos 8/8, Gatling 1,000 votes p95=163ms) |
+| M10 | Coverage, Testcontainers, e2e, Gatling, chaos | done; 10k load run skipped 2026-11-20, laptop cannot run it (254 tests, PostgreSQL 16 Testcontainers IT, e2e 14/14, chaos 8/8, Gatling 1,000 votes p95=163ms) |
 
 ## 9. Open questions
 - Should elections become a first-class entity (open/close times, eligible voters)?
