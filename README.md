@@ -177,7 +177,7 @@ The manifests use the images compose builds (`voting/<service>:1.0.0`): load the
 | 7 | **Security** — Hardening all endpoints | Week 10 | ✅ Complete |
 | 8 | **Observability** — ELK + Prometheus + Grafana | Week 11 | ✅ Complete & Verified |
 | 9 | **Containerization** — Docker Compose + K8s | Week 12 | ✅ Complete & Verified |
-| 10 | **Testing** — Load testing + Chaos testing | Week 13 | 🟡 Done except 10k load run |
+| 10 | **Testing** — Load testing + Chaos testing | Week 13 | ✅ Done (10k load run skipped: laptop cannot run it) |
 
 > 📖 **Detailed breakdown:** [PROJECT_PLAN.md](PROJECT_PLAN.md)
 

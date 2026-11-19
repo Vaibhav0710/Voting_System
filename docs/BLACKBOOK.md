@@ -65,7 +65,7 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 | Chaos resilience (`scripts/chaos.sh`) | 8/8 passed: 10/10 votes succeeded during candidate-service outage via Redis fallback, 503 for unknown candidate, clean recovery |
 | Double-vote race (`DoubleVoteSimulation`) | 100 near-simultaneous requests from same voter: 1 Created (201), 99 rejected (409/429), exactly 1 stored vote in DB |
 | Load test (`CastVoteSimulation`, 1,000 votes) | 16.67 req/s (1,000 votes ramped over 60 s), 0% error rate, mean 62 ms, **p95 163 ms** (< 500 ms SLA), **p99 282 ms**; hash chain valid (1000 votes, 0 broken) |
-| 10k load run | not yet run (target redefined 2026-10-26: 10,000 votes at a sustained rate with p95 < 500 ms and 0 errors, plus a 10,000-vote burst that keeps integrity; see PRD §6) |
+| 10k load run | skipped 2026-11-20: the dev laptop cannot run it; not measured (target redefined 2026-10-26: 10,000 votes at a sustained rate with p95 < 500 ms and 0 errors, plus a 10,000-vote burst that keeps integrity; see PRD §6) |
 | Live tally consistency | 1000 total votes tallied in Redis matching candidate sums and DB rows |
 | Kubernetes cluster deployment (kind v1.28.0) | all 12 pods Ready (**1/1 Running**); **14/14 e2e checks passed** through API Gateway |
 
@@ -81,7 +81,7 @@ See `ARCHITECTURE.md` (components, flows, contracts, decisions) and `DATABASE.md
 - Legacy WSL2 cgroup v1 compatibility: newer Kubernetes versions (v1.31+) require cgroup v2; kind cluster pinned to `kindest/node:v1.28.0` which fully supports cgroup v1 on Windows.
 
 ## Future scope
-Milestones 1–9 and M10 (done except the 10k load run) are built, executed, and verified on both Docker Compose and Kubernetes (kind). Additional production enhancements: an election entity with voting windows, a transactional
+Milestones 1–10 are built (the 10k load run was skipped: the dev laptop cannot run it), executed and verified on both Docker Compose and Kubernetes (kind). Additional production enhancements: an election entity with voting windows, a transactional
 outbox for `vote.cast`, a results recount from the voting DB, Flyway migrations, external anchoring of chain heads,
 unlinkable ballots, and a web UI.
 
@@ -92,6 +92,14 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 ---
 
 # Part 2 — Log (newest first)
+
+### 2026-11-20 — Decision: the 10k load run is skipped
+- **Why:** the dev laptop cannot run it. Seeding 10,000 voters, the step test, the paced 10k and the 10,000-vote
+  burst need more CPU and memory than it has next to the full stack.
+- **Chosen:** close M10 without the 10k run. The measured load result stays the 1,000-vote ramped run (p95 163 ms,
+  p99 282 ms, 0 errors). The tooling (`CapacitySimulation`, `BurstVoteSimulation`, the integrity check, the sampler)
+  and `docs/plans/2026-10-26-10k-load-run.md` stay in the repo for a run on a bigger machine.
+- **Rule:** no CV, README or profile may claim a 10k or "10,000 concurrent votes" result.
 
 ### 2026-10-27 — A failed integrity check now fails the load run (not committed)
 - **Why:** the review below found that `INTEGRITY FAILED` was only printed; capacity and burst have no Gatling
@@ -217,7 +225,7 @@ Kafka · Redis `EVAL` / Lua scripting · PostgreSQL `SELECT … FOR UPDATE` and 
 - **What was verified:**
   - **All test suites green (251 tests total):** user-service 31, candidate-service 63, voting-service 86 unit + 4 IT, result-service 34, api-gateway 30, eureka-server 3 = 251 passed, 0 failures, 0 skipped.
   - **voting-service `mvn verify`:** 4 PostgreSQL 16 Testcontainers IT passed with Testcontainers 1.21.4 and no `~/.docker-java.properties`. JaCoCo line coverage 89.6% (gate ≥ 80%).
-  - **Load testing:** 1,000 votes ramped over 60 s (`CastVoteSimulation`): 16.67 req/s, 0% errors, mean 62 ms, p95 163 ms, p99 282 ms. 10k concurrent votes target not yet run.
+  - **Load testing:** 1,000 votes ramped over 60 s (`CastVoteSimulation`): 16.67 req/s, 0% errors, mean 62 ms, p95 163 ms, p99 282 ms. 10k concurrent votes target not run (skipped 2026-11-20).
   - **Double-vote race:** 100 near-simultaneous votes by 1 voter (`DoubleVoteSimulation`): 1 stored, 99 rejected (409/429), verified via `$.data.page.totalElements`.
   - **Kubernetes cluster:** kind v1.28.0 cluster `voting-cluster`, namespace `voting`, 12 pods 1/1 Running, e2e 14/14 passed through Gateway port-forward.
   - **Feign timeouts:** connect 500 ms, read 700 ms, retry wait 200 ms (worst case 4,000 ms, 1,000 ms headroom) verified by unit tests in both voting-service and result-service; Compose images rebuilt and verified via `scripts/chaos.sh` (8/8) and `scripts/e2e.sh` (14/14).
